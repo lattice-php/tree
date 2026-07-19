@@ -1,0 +1,16 @@
+{
+  "name": "@lattice-php/tree-dev",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@inertiajs/react": "^3.0.0",
+    "@lattice-php/lattice": "^0.23.0",
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.8.0"
+  }
+}

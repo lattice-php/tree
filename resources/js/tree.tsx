@@ -2,7 +2,7 @@ import { router } from "@inertiajs/react";
 import { useEffect, useRef } from "react";
 import type { KeyboardEvent } from "react";
 import { cn, nodeIdentity, Renderer } from "@lattice-php/lattice/core";
-import type { Node, RendererComponent } from "@lattice-php/lattice/core/types";
+import type { Node, RendererComponent } from "@lattice-php/lattice/core";
 import { Icon, IconRenderer } from "@lattice-php/lattice/icons";
 import { useT } from "@lattice-php/lattice/i18n";
 import { Badge, TextLink } from "@lattice-php/lattice/ui";
@@ -31,7 +31,7 @@ export type TreeWireProps = {
   nodes: TreeNodeData[];
 };
 
-declare module "@lattice-php/lattice/core/types" {
+declare module "@lattice-php/lattice" {
   interface ComponentProps {
     tree: TreeWireProps;
   }
