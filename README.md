@@ -50,7 +50,7 @@ Any other backing store implements the two-method `Lattice\Tree\TreeSource` cont
 
 The component's strings ship with inline English defaults. With
 [bambamboole/laravel-i18next](https://github.com/bambamboole/laravel-i18next) enabled and
-`@lattice-php/lattice` >= 0.22, the plugin's `tree` namespace is loaded automatically and serves
+`@lattice-php/lattice` >= 0.23, the plugin's `tree` namespace is loaded automatically and serves
 the bundled `en`/`de` translations (override them like any Laravel package translation).
 
 ## Development
