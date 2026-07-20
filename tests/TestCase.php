@@ -6,15 +6,18 @@ namespace Lattice\Tree\Tests;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\ServiceProvider as InertiaServiceProvider;
 use Lattice\Lattice\LatticeServiceProvider;
+use Lattice\Lattice\Support\Testing\InteractsWithLatticeComponents;
 use Lattice\Tree\TreeServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    use InteractsWithLatticeComponents;
     use RefreshDatabase;
 
     protected function getEnvironmentSetUp($app): void
     {
+        $app['config']->set('lattice.trees.middleware', ['web']);
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite.database', ':memory:');

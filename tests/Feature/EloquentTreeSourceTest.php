@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\DB;
 use Lattice\Tree\EloquentTreeSource;
 use Lattice\Tree\Tree;
 use Lattice\Tree\TreeNode;
@@ -69,4 +70,44 @@ it('applies a query scope to both roots and children', function (): void {
 
     expect(array_map(fn (TreeNode $node): string => $node->label, $source->roots()))->toBe(['Visible Root'])
         ->and(array_map(fn (TreeNode $node): string => $node->label, $source->children((string) $visible->getKey())))->toBe(['Visible Child']);
+});
+
+it('queries one level per call in lazy mode instead of loading the table', function (): void {
+    $electronics = Category::factory()->create(['name' => 'Electronics']);
+    $laptops = Category::factory()->childOf($electronics)->create(['name' => 'Laptops']);
+    Category::factory()->childOf($laptops)->create(['name' => 'Ultrabooks']);
+    Category::factory()->create(['name' => 'Books']);
+
+    $source = EloquentTreeSource::make(Category::class)->lazy();
+
+    DB::enableQueryLog();
+    $roots = iterator_to_array($source->roots());
+
+    expect(DB::getQueryLog())->toHaveCount(1)
+        ->and(array_map(fn (TreeNode $node): array => [$node->label, $node->hasChildren], $roots))
+        ->toBe([['Books', false], ['Electronics', true]]);
+
+    DB::flushQueryLog();
+    $children = iterator_to_array($source->children((string) $electronics->getKey()));
+
+    expect(DB::getQueryLog())->toHaveCount(1)
+        ->and(array_map(fn (TreeNode $node): array => [$node->label, $node->hasChildren], $children))
+        ->toBe([['Laptops', true]]);
+});
+
+it('applies the scope to lazy level queries and the has-children probe', function (): void {
+    $electronics = Category::factory()->create(['name' => 'Electronics']);
+    Category::factory()->childOf($electronics)->create(['name' => 'Hidden']);
+    $clothing = Category::factory()->create(['name' => 'Clothing']);
+    Category::factory()->childOf($clothing)->create(['name' => 'Men']);
+
+    $source = EloquentTreeSource::make(Category::class)
+        ->lazy()
+        ->scope(fn ($query) => $query->where('name', '!=', 'Hidden'));
+
+    $roots = iterator_to_array($source->roots());
+
+    expect(array_map(fn (TreeNode $node): array => [$node->label, $node->hasChildren], $roots))
+        ->toBe([['Clothing', true], ['Electronics', false]])
+        ->and(iterator_to_array($source->children((string) $electronics->getKey())))->toBe([]);
 });

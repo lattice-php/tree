@@ -22,6 +22,8 @@ final class EloquentTreeSource implements TreeSource
     /** @var Closure(Builder<Model>): mixed|null */
     private ?Closure $scope = null;
 
+    private bool $lazy = false;
+
     /** @var array<string, list<TreeNode>>|null */
     private ?array $childrenByParent = null;
 
@@ -71,14 +73,70 @@ final class EloquentTreeSource implements TreeSource
         return $this;
     }
 
+    /**
+     * Query one level per call instead of loading the whole scoped table.
+     * The right mode for the lazy endpoint, where each request asks for a
+     * single parent's children; the full scan stays optimal for the eager
+     * walk, which visits every level anyway.
+     */
+    public function lazy(bool $lazy = true): self
+    {
+        $this->lazy = $lazy;
+
+        return $this;
+    }
+
     public function roots(): iterable
     {
-        return $this->childrenByParent()[self::ROOTS] ?? [];
+        return $this->lazy
+            ? $this->level(null)
+            : $this->childrenByParent()[self::ROOTS] ?? [];
     }
 
     public function children(string $parentId): iterable
     {
-        return $this->childrenByParent()[$parentId] ?? [];
+        return $this->lazy
+            ? $this->level($parentId)
+            : $this->childrenByParent()[$parentId] ?? [];
+    }
+
+    /**
+     * One level plus a scoped EXISTS probe per row for hasChildren — no
+     * relation on the consumer's model is required.
+     *
+     * @return list<TreeNode>
+     */
+    private function level(?string $parentId): array
+    {
+        $query = $this->query();
+        $model = $query->getModel();
+        $table = $model->getTable();
+        $alias = "{$table}_lattice_children";
+
+        if ($parentId === null) {
+            $query->whereNull("{$table}.{$this->parentKey}");
+        } else {
+            $query->where("{$table}.{$this->parentKey}", $parentId);
+        }
+
+        $probe = $this->query()
+            ->from("{$table} as {$alias}")
+            ->selectRaw('1')
+            ->whereColumn("{$alias}.{$this->parentKey}", $model->getQualifiedKeyName())
+            ->limit(1);
+
+        $rows = $query
+            ->select("{$table}.*")
+            ->addSelect(['lattice_tree_has_children' => $probe])
+            ->orderBy($this->labelKey)
+            ->get();
+
+        return array_values($rows->map(
+            fn (Model $row): TreeNode => TreeNode::make(
+                (string) $row->getAttribute($this->labelKey),
+                (string) $row->getKey(),
+            )->hasChildren((bool) $row->getAttribute('lattice_tree_has_children')),
+        )->all());
     }
 
     /**
