@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { createRegistry, eagerComponent } from "@lattice-php/lattice/core";
 import type { RendererComponent } from "@lattice-php/lattice/core";
@@ -51,11 +51,16 @@ describe("Tree component", () => {
     expect(screen.getByText("Laptops")).toBeVisible();
   });
 
-  it("shows a chevron for a lazy boundary and none for a leaf", () => {
-    renderTree({ defaultExpanded: ["1"], nodes });
+  it("shows a chevron for a loadable boundary and none for a leaf or a dead boundary", () => {
+    renderTree({ defaultExpanded: ["1"], endpoint: "/lattice/trees/demo", nodes, ref: "sealed" });
 
     expect(screen.getByTestId("tree-node-9-toggle")).toBeInTheDocument();
     expect(screen.queryByTestId("tree-node-3-toggle")).not.toBeInTheDocument();
+
+    cleanup();
+    renderTree({ defaultExpanded: ["1"], nodes });
+
+    expect(screen.queryByTestId("tree-node-9-toggle")).not.toBeInTheDocument();
   });
 
   it("marks the active node aria-selected", () => {
