@@ -18,6 +18,11 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite.database', ':memory:');
+        $app['config']->set('lattice.discover', [dirname(__DIR__).'/workbench/app']);
+        $app['config']->set('view.paths', [
+            ...$app['config']->get('view.paths', []),
+            dirname(__DIR__).'/workbench/resources/views',
+        ]);
     }
 
     /** @return array<int, class-string> */

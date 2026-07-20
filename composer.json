@@ -50,6 +50,7 @@
         ],
         "boost:update": "@php vendor/bin/testbench boost:update --no-interaction",
         "boost:refresh": "[ -n \"$CI\" ] || [ ! -f vendor/bin/testbench ] || vendor/bin/testbench boost:update --no-interaction",
+        "serve": "@php vendor/bin/testbench serve",
         "test": "@php vendor/bin/pest",
         "test:lint": "@php vendor/bin/pint --test",
         "lint": "@php vendor/bin/pint",

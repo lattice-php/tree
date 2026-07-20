@@ -4,9 +4,17 @@ declare(strict_types=1);
 namespace Lattice\Tree;
 
 use Illuminate\Support\ServiceProvider;
+use Lattice\Lattice\Core\Discovery\DiscoveryKinds;
 
 final class TreeServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        DiscoveryKinds::register('trees', AsTree::class);
+
+        $this->app->singleton(TreeRegistry::class);
+    }
+
     public function boot(): void
     {
         // Registered directly on the loader rather than via loadTranslationsFrom():

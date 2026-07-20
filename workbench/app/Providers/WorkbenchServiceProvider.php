@@ -19,6 +19,8 @@ class WorkbenchServiceProvider extends ServiceProvider
     #[\Override]
     public function register(): void
     {
+        config(['lattice.discover' => [package_path('workbench/app')]]);
+
         $this->readBoostConfigFromPackageRoot();
     }
 

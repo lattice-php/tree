@@ -1,5 +1,11 @@
 laravel: '@testbench'
 
+workbench:
+  start: '/tree'
+  welcome: false
+  discovers:
+    views: true
+
 providers:
   - Inertia\ServiceProvider
   - Lattice\Lattice\LatticeServiceProvider
