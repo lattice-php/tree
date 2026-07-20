@@ -4,3 +4,4 @@ providers:
   - Inertia\ServiceProvider
   - Lattice\Lattice\LatticeServiceProvider
   - Lattice\Tree\TreeServiceProvider
+  - Workbench\App\Providers\WorkbenchServiceProvider
