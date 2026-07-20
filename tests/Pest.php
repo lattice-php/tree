@@ -1,9 +1,13 @@
 <?php
 declare(strict_types=1);
 
+use Lattice\Tree\Tests\BrowserTestCase;
 use Lattice\Tree\Tests\TestCase;
 
+require_once __DIR__.'/Support/Browser.php';
+
 uses(TestCase::class)->in('Feature');
+uses(BrowserTestCase::class)->in('Browser');
 
 /**
  * @return array<array-key, mixed>

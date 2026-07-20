@@ -13,6 +13,7 @@
         "laravel/pint": "^1.16",
         "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
         "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-browser": "^4.3",
         "pestphp/pest-plugin-laravel": "^4.0"
     },
     "autoload": {
@@ -51,7 +52,11 @@
         "boost:update": "@php vendor/bin/testbench boost:update --no-interaction",
         "boost:refresh": "[ -n \"$CI\" ] || [ ! -f vendor/bin/testbench ] || vendor/bin/testbench boost:update --no-interaction",
         "serve": "@php vendor/bin/testbench serve",
-        "test": "@php vendor/bin/pest",
+        "test": "@php vendor/bin/pest --testsuite Unit,Feature",
+        "test:browser": [
+            "npm run build",
+            "@php vendor/bin/pest --testsuite Browser"
+        ],
         "test:lint": "@php vendor/bin/pint --test",
         "lint": "@php vendor/bin/pint",
         "analyse": "@php vendor/bin/phpstan analyse",

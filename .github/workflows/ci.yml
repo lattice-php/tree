@@ -22,3 +22,19 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: composer test:browser

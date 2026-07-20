@@ -3,13 +3,18 @@ declare(strict_types=1);
 
 namespace Lattice\Tree;
 
+use InvalidArgumentException;
 use Lattice\Lattice\Attributes\AsComponent;
 use Lattice\Lattice\Attributes\SerializationHook;
 use Lattice\Lattice\Ui\Components\Component;
+use Lattice\Lattice\Ui\Components\IsInteractive;
+use LogicException;
 
 #[AsComponent('tree')]
 class Tree extends Component
 {
+    use IsInteractive;
+
     private ?TreeSource $source = null;
 
     public ?string $activeId = null;
@@ -18,6 +23,12 @@ class Tree extends Component
     public array $defaultExpanded = [];
 
     public bool $rememberState = false;
+
+    public ?string $endpoint = null;
+
+    public bool $lazy = false;
+
+    private int $eagerDepth = self::MAX_DEPTH;
 
     /**
      * Serialization depth cap: the termination guarantee for source-backed
@@ -29,6 +40,48 @@ class Tree extends Component
     public static function make(?string $key = null): static
     {
         return new static($key);
+    }
+
+    /**
+     * Build a tree from a registered {@see TreeDefinition}: the definition's
+     * source provides the nodes, and the sealed reference lets the endpoint
+     * re-resolve it with the same context on a later request.
+     *
+     * @param  class-string<TreeDefinition>  $definition
+     * @param  array<string, mixed>  $context
+     */
+    public static function use(string $definition, array $context = []): static
+    {
+        /** @var static */
+        return app(TreeRegistry::class)->component($definition, $context);
+    }
+
+    public function endpoint(string $endpoint): static
+    {
+        $this->endpoint = $endpoint;
+
+        return $this;
+    }
+
+    /**
+     * Serialize only the first $eagerDepth levels; deeper nodes are fetched
+     * from the endpoint when expanded. 0 serializes a bare skeleton whose
+     * roots the client fetches too.
+     */
+    public function lazy(int $eagerDepth = 1): static
+    {
+        if ($this->signatureKey === null) {
+            throw new LogicException('Tree::lazy() requires a definition-backed tree — build it with Tree::use(). Inline nodes()/source() trees cannot round-trip to the endpoint.');
+        }
+
+        if ($eagerDepth < 0) {
+            throw new InvalidArgumentException('Tree eager depth must be zero or greater.');
+        }
+
+        $this->lazy = true;
+        $this->eagerDepth = min($eagerDepth, self::MAX_DEPTH);
+
+        return $this;
     }
 
     /**
@@ -80,10 +133,16 @@ class Tree extends Component
     #[SerializationHook(priority: 300)]
     protected function serialiseNodes(array $data): array
     {
-        $roots = $this->source instanceof TreeSource ? $this->nodeList($this->source->roots()) : [];
+        // Eager trees serialize one level beyond MAX_DEPTH as a shallow
+        // boundary row; lazy trees serialize exactly $eagerDepth levels.
+        $maxLevels = $this->lazy ? $this->eagerDepth : self::MAX_DEPTH + 1;
+
+        $roots = $maxLevels > 0 && $this->source instanceof TreeSource
+            ? $this->nodeList($this->source->roots())
+            : [];
 
         $data['props']['nodes'] = array_map(
-            fn (TreeNode $node): array => $this->serialiseNode($node, 0),
+            fn (TreeNode $node): array => $this->serialiseNode($node, 1, $maxLevels),
             $roots,
         );
 
@@ -93,11 +152,11 @@ class Tree extends Component
     /**
      * @return array<string, mixed>
      */
-    private function serialiseNode(TreeNode $node, int $depth): array
+    private function serialiseNode(TreeNode $node, int $level, int $maxLevels): array
     {
         $data = $node->serialiseShallow();
 
-        if ($depth >= self::MAX_DEPTH) {
+        if ($level >= $maxLevels) {
             if ($node->children !== []) {
                 $data['hasChildren'] = true;
             }
@@ -108,7 +167,7 @@ class Tree extends Component
         $children = $this->resolveChildren($node);
 
         if ($children !== []) {
-            $data['children'] = array_map(fn (TreeNode $child): array => $this->serialiseNode($child, $depth + 1), $children);
+            $data['children'] = array_map(fn (TreeNode $child): array => $this->serialiseNode($child, $level + 1, $maxLevels), $children);
         }
 
         return $data;
