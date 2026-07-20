@@ -9,16 +9,6 @@ use Workbench\App\Trees\ScopedCategoryTree;
 
 use function Pest\Laravel\getJson;
 
-function seedCategoryTree(): Category
-{
-    $electronics = Category::factory()->create(['name' => 'Electronics']);
-    $laptops = Category::factory()->childOf($electronics)->create(['name' => 'Laptops']);
-    Category::factory()->childOf($laptops)->create(['name' => 'Ultrabooks']);
-    Category::factory()->create(['name' => 'Books']);
-
-    return $electronics;
-}
-
 it('serves one level of children for a sealed tree', function (): void {
     $electronics = seedCategoryTree();
     $tree = $this->sealTree(Tree::use(CategoryTree::class)->lazy());

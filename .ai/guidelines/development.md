@@ -6,9 +6,13 @@
 - The package is developed with Orchestra Testbench, not a full Laravel app. `artisan` at the repo root is a symlink to
   `vendor/bin/testbench`, so `php artisan <command>` boots the Testbench skeleton with Lattice's and this package's
   service providers.
-- Run the PHP suite with `composer test` or `./vendor/bin/pest`.
+- Run the PHP suite with `composer test` (Unit + Feature; the Browser suite is excluded on purpose).
 - Run the JavaScript (renderer) suite with `npm test` (Vitest). The tests exercise the renderer against the **published**
   `@lattice-php/lattice`, so `npm install` before running them.
+- Run the browser suite with `composer test:browser`. It rebuilds the workbench bundle first (`npm run build`) so it
+  can never test stale assets — do not bypass that by invoking Pest's Browser suite directly after renderer changes.
+- Serve the workbench demo app with `composer serve` (starts at `/tree`; `/tree-lazy` exercises the lazy endpoint
+  against a seeded sqlite database — `testbench.yaml` holds the env/migrations/build wiring).
 - The AI tooling overrides for Boost live in `workbench/app/Support/` and are wired in
   `Workbench\App\Providers\WorkbenchServiceProvider`. They point Boost at the package root instead of the Testbench
   skeleton.
@@ -20,7 +24,8 @@
 - Before finishing a change, run the gate that matches what you touched:
   - PHP change → `composer check` (Pint, PHPStan, Pest).
   - Renderer change → `npm run typecheck` and `npm test`.
-- Never report green without having run the gate. CI runs both.
+  - Anything touching the workbench app, the endpoint, or interactive behavior → additionally `composer test:browser`.
+- Never report green without having run the gate. CI runs all three.
 
 ## Comments
 
@@ -37,6 +42,11 @@
 - Prefer feature tests for backend behavior — serialize a `Tree` and assert its wire shape, or drive a source through
   the component, rather than isolating internals.
 - Use unit tests for the small deterministic value objects and sources (`TreeNode`, `CallbackTreeSource`).
-- For renderer behavior — expand/collapse, keyboard navigation, links, actions, persistence — use the Vitest suite in
-  `resources/js`. It renders the component through Lattice's registry via the local `test-support.tsx` helpers.
+- For renderer behavior — expand/collapse, keyboard navigation, links, actions, persistence, lazy fetching — use the
+  Vitest suite in `resources/js`. It renders the component through Lattice's registry via the local `test-support.tsx`
+  helpers; lazy tests stub `globalThis.fetch`.
+- Endpoint behavior (refs, authorization, context round-trip) is feature-tested through HTTP; seal refs with the
+  `TestCase::sealTree()` helper, which wraps core's shipped `InteractsWithLatticeComponents` trait.
+- For real-browser coverage (Playwright via Pest 4) use `tests/Browser`; `BrowserTestCase` guards against a missing or
+  stale workbench build, and the `assert*Eventually` helpers in `tests/Support/Browser.php` absorb async UI settling.
 - It is acceptable to add stable `data-test` attributes when they make assertions clearer or less brittle.

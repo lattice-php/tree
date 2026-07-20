@@ -3,20 +3,11 @@ declare(strict_types=1);
 
 use Lattice\Tree\Tree;
 use Lattice\Tree\TreeNode;
-use Workbench\App\Models\Category;
 use Workbench\App\Trees\CategoryTree;
 use Workbench\App\Trees\DeniedTree;
 
-function seedCategoryLevels(): void
-{
-    $electronics = Category::factory()->create(['name' => 'Electronics']);
-    $laptops = Category::factory()->childOf($electronics)->create(['name' => 'Laptops']);
-    Category::factory()->childOf($laptops)->create(['name' => 'Ultrabooks']);
-    Category::factory()->create(['name' => 'Books']);
-}
-
 it('builds an interactive tree from a definition', function (): void {
-    seedCategoryLevels();
+    seedCategoryTree();
 
     $node = wire(Tree::use(CategoryTree::class, ['tenant' => 7]));
 
@@ -28,7 +19,7 @@ it('builds an interactive tree from a definition', function (): void {
 });
 
 it('serializes only the roots for lazy eagerDepth 1', function (): void {
-    seedCategoryLevels();
+    seedCategoryTree();
 
     $node = wire(Tree::use(CategoryTree::class)->lazy());
 
@@ -40,7 +31,7 @@ it('serializes only the roots for lazy eagerDepth 1', function (): void {
 });
 
 it('serializes two levels for lazy eagerDepth 2, marking the boundary', function (): void {
-    seedCategoryLevels();
+    seedCategoryTree();
 
     $node = wire(Tree::use(CategoryTree::class)->lazy(2));
 
@@ -51,7 +42,7 @@ it('serializes two levels for lazy eagerDepth 2, marking the boundary', function
 });
 
 it('serializes a skeleton without nodes for lazy eagerDepth 0', function (): void {
-    seedCategoryLevels();
+    seedCategoryTree();
 
     $node = wire(Tree::use(CategoryTree::class)->lazy(0));
 
