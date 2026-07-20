@@ -6,7 +6,7 @@ import type { Node, RendererComponent } from "@lattice-php/lattice/core";
 import { Icon, IconRenderer } from "@lattice-php/lattice/icons";
 import { useT } from "@lattice-php/lattice/i18n";
 import { Badge, TextLink } from "@lattice-php/lattice/ui";
-import { TreeContext, useTreeContext, useTreeState } from "./tree-context";
+import { ROOTS_KEY, TreeContext, useTreeContext, useTreeState } from "./tree-context";
 
 /**
  * The sparse wire shape a tree node serializes as (see `TreeNode::jsonSerialize()`):
@@ -29,6 +29,9 @@ export type TreeWireProps = {
   defaultExpanded: string[];
   rememberState: boolean;
   nodes: TreeNodeData[];
+  ref: string | null;
+  endpoint: string | null;
+  lazy: boolean;
 };
 
 declare module "@lattice-php/lattice" {
@@ -37,8 +40,8 @@ declare module "@lattice-php/lattice" {
   }
 }
 
-function hasExpandableChildren(node: TreeNodeData): boolean {
-  return Boolean(node.children?.length) || node.hasChildren === true;
+function isExpandable(node: TreeNodeData, children: TreeNodeData[] | undefined, canLoad: boolean): boolean {
+  return Boolean(children?.length) || (node.hasChildren === true && (canLoad || Boolean(node.children?.length)));
 }
 
 const ORDER_PATH_SEGMENT_WIDTH = 6;
@@ -65,8 +68,12 @@ function TreeItem({
   const {
     activate,
     activeId,
+    canLoad,
+    childrenFor,
     expanded,
     focusedId,
+    isLoading,
+    loadChildren,
     moveFocus,
     register,
     toggle,
@@ -80,8 +87,18 @@ function TreeItem({
   const isActive = activeId === node.id;
   const isFocused = focusedId === node.id;
   const isDisabled = node.disabled === true;
-  const expandable = hasExpandableChildren(node);
+  const children = node.children ?? childrenFor(node.id);
+  const expandable = isExpandable(node, children, canLoad);
+  const loading = isLoading(node.id);
   const actionsRef = useRef<HTMLSpanElement>(null);
+
+  // Fetching is an effect of "expanded but unloaded", so chevron clicks,
+  // ArrowRight, defaultExpanded, and a rememberState restore all share it.
+  useEffect(() => {
+    if (isExpanded && node.hasChildren === true && !node.children && !children) {
+      loadChildren(node.id);
+    }
+  }, [isExpanded, node, children, loadChildren]);
 
   useEffect(() => {
     register({ id: node.id, label: node.label, orderPath, parentPath, path, ref });
@@ -194,13 +211,17 @@ function TreeItem({
             tabIndex={-1}
             type="button"
           >
-            <Icon
-              className={cn(
-                "size-lt-icon-md shrink-0 transition-transform",
-                isExpanded && "rotate-90",
-              )}
-              name="chevron-right"
-            />
+            {loading ? (
+              <Icon className="size-lt-icon-md shrink-0 animate-spin" name="loader-2" />
+            ) : (
+              <Icon
+                className={cn(
+                  "size-lt-icon-md shrink-0 transition-transform",
+                  isExpanded && "rotate-90",
+                )}
+                name="chevron-right"
+              />
+            )}
           </button>
         ) : null}
         {node.icon ? <IconRenderer className="size-lt-icon-md shrink-0" icon={node.icon} /> : null}
@@ -218,16 +239,16 @@ function TreeItem({
           </span>
         ) : null}
       </div>
-      {expandable && isExpanded && node.children && node.children.length > 0 ? (
+      {expandable && isExpanded && children && children.length > 0 ? (
         <ul className="pl-6" role="group">
-          {node.children.map((child, index) => (
+          {children.map((child, index) => (
             <TreeItem
               depth={depth + 1}
               key={child.id}
               node={child}
               orderPath={`${orderPath}.${orderPathSegment(index)}`}
               parentPath={path}
-              siblingCount={node.children?.length ?? 1}
+              siblingCount={children.length}
               siblingIndex={index + 1}
             />
           ))}
@@ -242,22 +263,26 @@ const TreeComponent: RendererComponent<"tree"> = ({ node }) => {
   const value = useTreeState({
     activeId: node.props.activeId,
     defaultExpanded: node.props.defaultExpanded,
+    endpoint: node.props.endpoint ?? null,
+    componentRef: node.props.ref ?? null,
+    lazy: node.props.lazy === true,
     nodes: node.props.nodes,
     rememberState: node.props.rememberState,
     storageKey: `lattice:tree:${identity ?? "default"}`,
   });
+  const roots = node.props.nodes.length > 0 ? node.props.nodes : (value.childrenFor(ROOTS_KEY) ?? []);
 
   return (
     <TreeContext.Provider value={value}>
       <ul data-lattice-component={identity} role="tree">
-        {node.props.nodes.map((child, index) => (
+        {roots.map((child, index) => (
           <TreeItem
             depth={1}
             key={child.id}
             node={child}
             orderPath={orderPathSegment(index)}
             parentPath={null}
-            siblingCount={node.props.nodes.length}
+            siblingCount={roots.length}
             siblingIndex={index + 1}
           />
         ))}

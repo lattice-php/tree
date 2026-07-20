@@ -1,6 +1,9 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { usePersistentState } from "@lattice-php/lattice/core";
+import { apiJson, usePersistentState } from "@lattice-php/lattice/core";
+import type { TreeNodeData } from "./tree";
+
+export const ROOTS_KEY = "";
 
 export type TreeItemRegistration = {
   id: string;
@@ -16,9 +19,13 @@ export type TreeFocusDirection = "first" | "firstChild" | "last" | "next" | "par
 export type TreeContextValue = {
   activate: (id: string) => void;
   activeId: string | null;
+  canLoad: boolean;
+  childrenFor: (id: string) => TreeNodeData[] | undefined;
   expanded: Set<string>;
   focus: (id: string) => void;
   focusedId: string | null;
+  isLoading: (id: string) => boolean;
+  loadChildren: (id: string) => void;
   moveFocus: (fromId: string, direction: TreeFocusDirection) => void;
   register: (entry: TreeItemRegistration) => void;
   toggle: (id: string) => void;
@@ -29,9 +36,13 @@ export type TreeContextValue = {
 const defaultTreeContext: TreeContextValue = {
   activate: () => {},
   activeId: null,
+  canLoad: false,
+  childrenFor: () => undefined,
   expanded: new Set(),
   focus: () => {},
   focusedId: null,
+  isLoading: () => false,
+  loadChildren: () => {},
   moveFocus: () => {},
   register: () => {},
   toggle: () => {},
@@ -64,12 +75,18 @@ const TYPEAHEAD_IDLE_MS = 800;
 export function useTreeState({
   activeId: initialActiveId,
   defaultExpanded,
+  endpoint,
+  componentRef,
+  lazy,
   nodes,
   rememberState,
   storageKey,
 }: {
   activeId: string | null;
   defaultExpanded: string[];
+  endpoint: string | null;
+  componentRef: string | null;
+  lazy: boolean;
   nodes: Array<{ id: string }>;
   rememberState: boolean;
   storageKey: string;
@@ -87,6 +104,12 @@ export function useTreeState({
   const [focusedId, setFocusedId] = useState<string | null>(() => nodes[0]?.id ?? null);
   const registryRef = useRef<Map<string, TreeItemRegistration>>(new Map());
   const typeAheadRef = useRef<{ text: string; timestamp: number }>({ text: "", timestamp: 0 });
+  const [loaded, setLoaded] = useState<Map<string, TreeNodeData[]>>(new Map());
+  const [loading, setLoading] = useState<Set<string>>(new Set());
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const loadedRef = useRef(loaded);
+  loadedRef.current = loaded;
+  const canLoad = endpoint !== null && endpoint !== "";
 
   const toggle = useCallback(
     (id: string) => {
@@ -191,13 +214,74 @@ export function useTreeState({
     [focus],
   );
 
+  const loadChildren = useCallback(
+    (id: string) => {
+      if (!canLoad || inFlightRef.current.has(id) || loadedRef.current.has(id)) {
+        return;
+      }
+
+      inFlightRef.current.add(id);
+      setLoading((current) => new Set(current).add(id));
+
+      apiJson<{ nodes: TreeNodeData[] }>(`${endpoint}?parent=${encodeURIComponent(id)}`, {
+        ref: componentRef ?? "",
+      })
+        .then(({ nodes: fetched }) => {
+          setLoaded((current) => new Map(current).set(id, fetched));
+        })
+        .catch(() => {
+          // Collapse so the next expand retries; nothing is cached for the id.
+          setExpanded((current) => {
+            const next = new Set(current);
+            next.delete(id);
+
+            return next;
+          });
+        })
+        .finally(() => {
+          inFlightRef.current.delete(id);
+          setLoading((current) => {
+            const next = new Set(current);
+            next.delete(id);
+
+            return next;
+          });
+        });
+    },
+    [canLoad, componentRef, endpoint, setExpanded],
+  );
+
+  const childrenFor = useCallback((id: string) => loaded.get(id), [loaded]);
+
+  const isLoading = useCallback((id: string) => loading.has(id), [loading]);
+
+  const hasWireNodes = nodes.length > 0;
+
+  useEffect(() => {
+    if (lazy && !hasWireNodes) {
+      loadChildren(ROOTS_KEY);
+    }
+  }, [lazy, hasWireNodes, loadChildren]);
+
+  const firstFetchedRootId = loaded.get(ROOTS_KEY)?.[0]?.id;
+
+  useEffect(() => {
+    if (focusedId === null && firstFetchedRootId !== undefined) {
+      setFocusedId(firstFetchedRootId);
+    }
+  }, [focusedId, firstFetchedRootId]);
+
   return useMemo(
     () => ({
       activate,
       activeId,
+      canLoad,
+      childrenFor,
       expanded,
       focus,
       focusedId,
+      isLoading,
+      loadChildren,
       moveFocus,
       register,
       toggle,
@@ -207,9 +291,13 @@ export function useTreeState({
     [
       activate,
       activeId,
+      canLoad,
+      childrenFor,
       expanded,
       focus,
       focusedId,
+      isLoading,
+      loadChildren,
       moveFocus,
       register,
       toggle,
