@@ -24,3 +24,21 @@ it('serves the plain page the demo tree links to', function (): void {
 
     get('/plain')->assertSuccessful();
 });
+
+it('serves the lazy tree demo page with interactive props', function (): void {
+    withoutVite();
+
+    $response = get('/tree-lazy');
+
+    $response->assertSuccessful();
+    $response->assertInertia(
+        fn (Assert $page): Assert => $page
+            ->component('lattice/page', shouldExist: false)
+            ->where('lattice', function (mixed $lattice): bool {
+                $wire = json_encode($lattice, JSON_THROW_ON_ERROR);
+
+                return str_contains($wire, '"lazy":true')
+                    && str_contains($wire, '\/lattice\/trees\/categories');
+            }),
+    );
+});
