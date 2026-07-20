@@ -81,6 +81,26 @@ it('restores remembered expansion after a reload by refetching', function (): vo
     $page->assertNoJavaScriptErrors();
 });
 
+it('collapses the node when the sealed ref has expired', function (): void {
+    $electronics = seedLazyCategories();
+    $electronicsNode = '[data-test="tree-node-'.$electronics->getKey().'"]';
+
+    // visit() navigates lazily, on the first awaited interaction — the
+    // assertion forces the page (and its sealed ref) to exist before the
+    // clock moves, otherwise the ref would be minted with the traveled time.
+    $page = visit('/tree-lazy')->assertSee('Electronics');
+
+    $this->travel((int) config('lattice.security.ref_lifetime', 30) + 1)->minutes();
+
+    $page->click('[data-test="tree-node-'.$electronics->getKey().'-toggle"]');
+
+    retryUntil(function () use ($page, $electronicsNode): void {
+        $page->assertAriaAttribute($electronicsNode, 'expanded', 'false');
+    });
+
+    $page->assertNotPresent('[data-test="tree-node-'.categoryId('Laptops').'"]');
+});
+
 it('keeps the node collapsed when the fetch is rejected', function (): void {
     $electronics = seedLazyCategories();
     $electronicsNode = '[data-test="tree-node-'.$electronics->getKey().'"]';
