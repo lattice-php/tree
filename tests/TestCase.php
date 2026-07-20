@@ -42,4 +42,12 @@ abstract class TestCase extends BaseTestCase
     {
         $this->loadMigrationsFrom(dirname(__DIR__).'/workbench/database/migrations');
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function sealTree(mixed $component): array
+    {
+        return $this->sealLatticeComponent($component);
+    }
 }
