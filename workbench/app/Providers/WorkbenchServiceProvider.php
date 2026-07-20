@@ -11,6 +11,7 @@ use Laravel\Roster\Roster;
 use Workbench\App\Support\BoostConfig;
 use Workbench\App\Support\BoostGuidelineComposer;
 use Workbench\App\Support\BoostSkillComposer;
+use Workbench\App\WorkbenchConfig;
 
 use function Orchestra\Testbench\package_path;
 
@@ -19,10 +20,7 @@ class WorkbenchServiceProvider extends ServiceProvider
     #[\Override]
     public function register(): void
     {
-        config([
-            'lattice.discover' => [package_path('workbench/app')],
-            'lattice.trees.middleware' => ['web'],
-        ]);
+        config(WorkbenchConfig::lattice());
 
         $this->readBoostConfigFromPackageRoot();
     }
