@@ -9,6 +9,7 @@ use Lattice\Lattice\LatticeServiceProvider;
 use Lattice\Lattice\Support\Testing\InteractsWithLatticeComponents;
 use Lattice\Tree\TreeServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
+use Workbench\App\WorkbenchConfig;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -17,11 +18,13 @@ abstract class TestCase extends BaseTestCase
 
     protected function getEnvironmentSetUp($app): void
     {
-        $app['config']->set('lattice.trees.middleware', ['web']);
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite.database', ':memory:');
-        $app['config']->set('lattice.discover', [dirname(__DIR__).'/workbench/app']);
+
+        foreach (WorkbenchConfig::lattice() as $key => $value) {
+            $app['config']->set($key, $value);
+        }
         $app['config']->set('view.paths', [
             ...$app['config']->get('view.paths', []),
             dirname(__DIR__).'/workbench/resources/views',

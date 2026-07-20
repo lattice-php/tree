@@ -5,6 +5,7 @@ use Lattice\Tree\Tests\BrowserTestCase;
 use Lattice\Tree\Tests\TestCase;
 
 require_once __DIR__.'/Support/Browser.php';
+require_once __DIR__.'/Support/Fixtures.php';
 
 uses(TestCase::class)->in('Feature');
 uses(BrowserTestCase::class)->in('Browser');
