@@ -2,10 +2,11 @@
 
 Tree view component for [Lattice](https://github.com/lattice-php/lattice) — hierarchy rendering
 from inline nodes, callbacks, or Eloquent adjacency-list sources, with full keyboard navigation
-(roving tabindex, typeahead) and per-node icons, badges, links, and actions.
+(roving tabindex, typeahead), per-node icons, badges, links, and actions, and lazy child loading
+over a signed endpoint.
 
-Extracted from the Lattice core package to grow on its own: lazy child loading via a signed-ref
-endpoint and drag & drop reordering are on the roadmap.
+Extracted from the Lattice core package to grow on its own; drag & drop reordering is next on
+the roadmap.
 
 ## Installation
 
@@ -45,6 +46,46 @@ Tree::make('categories')->source(
 ```
 
 Any other backing store implements the two-method `Lattice\Tree\TreeSource` contract.
+
+## Lazy loading
+
+Serializing a large hierarchy eagerly is wasteful. Register a tree definition and let expansion
+fetch one level per request instead:
+
+```php
+use Lattice\Tree\AsTree;
+use Lattice\Tree\EloquentTreeSource;
+use Lattice\Tree\TreeDefinition;
+use Lattice\Tree\TreeSource;
+
+#[AsTree('categories')]
+class CategoryTree extends TreeDefinition
+{
+    public function source(): TreeSource
+    {
+        return EloquentTreeSource::make(Category::class);
+    }
+}
+```
+
+```php
+Tree::use(CategoryTree::class)->lazy();     // roots eager, deeper levels fetched on expand
+Tree::use(CategoryTree::class)->lazy(2);    // two levels eager
+Tree::use(CategoryTree::class)->lazy(0);    // bare skeleton — even the roots are fetched
+```
+
+The definition is discovered like any Lattice definition (`#[AsTree]` + Lattice's discovery
+paths), and the serialized tree carries a sealed reference — the same signing machinery Lattice
+tables use — that the package's `lattice/trees/{tree}` endpoint verifies before resolving the
+definition again with the identical context. `authorize()` on the definition gates both the
+initial render and every fetch. The route's middleware and path follow Lattice's group
+conventions: `config('lattice.trees.middleware', ['web', 'auth'])` and
+`config('lattice.trees.endpoint', 'lattice/trees/{tree}')`.
+
+An `EloquentTreeSource` behind the endpoint automatically switches to per-level queries
+(`WHERE parent_id = ?` plus a scoped `EXISTS` probe for `hasChildren`) instead of loading the
+whole table. Inline `->nodes()` / `->source()` trees stay eager-only — without a registry key
+there is nothing to seal — so `->lazy()` on them throws.
 
 ## Translations
 
