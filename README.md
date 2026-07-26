@@ -97,6 +97,9 @@ the bundled `en`/`de` translations (override them like any Laravel package trans
 ## Development
 
 ```bash
-composer install
-composer check   # pint --test, phpstan, pest
+composer install && npm install
+composer check          # pint --test, phpstan, pest (Unit + Feature)
+npm run typecheck && npm test
+composer test:browser   # rebuilds the workbench bundle, then runs the Playwright suite
+composer serve          # workbench demo app: /tree (eager) and /tree-lazy (lazy endpoint)
 ```
