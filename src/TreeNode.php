@@ -6,14 +6,28 @@ namespace Lattice\Tree;
 use JsonSerializable;
 use Lattice\Lattice\Actions\Components\Action;
 use Lattice\Lattice\Actions\Components\ActionGroup;
-use Lattice\Lattice\Attributes\TypeScript;
+use Lattice\Lattice\Core\Color;
+use Lattice\Lattice\Core\Enums\ColorName;
+use Lattice\Lattice\Ui\Components\Badge;
+use Lattice\Lattice\Ui\Components\Component;
+use Lattice\Lattice\Ui\Components\Icon;
+use Lattice\Lattice\Ui\Components\Link;
+use Lattice\Lattice\Ui\Components\Stack;
+use Lattice\Lattice\Ui\Components\Text;
+use Lattice\Lattice\Ui\Enums\Side;
+use Lattice\Lattice\Ui\Enums\StackDirection;
+use Lattice\Lattice\Ui\Enums\Width;
 
-#[TypeScript]
 final class TreeNode implements JsonSerializable
 {
+    /** @var list<Component>|null */
+    private ?array $schema = null;
+
     public ?string $icon = null;
 
     public ?string $badge = null;
+
+    public Color|ColorName|string|null $badgeColor = null;
 
     public ?string $href = null;
 
@@ -27,13 +41,13 @@ final class TreeNode implements JsonSerializable
     public bool $disabled = false;
 
     private function __construct(
-        public readonly string $label,
         public readonly string $id,
+        public readonly string $label,
     ) {}
 
-    public static function make(string $label, string $id): self
+    public static function make(string $id, string $label): self
     {
-        return new self($label, $id);
+        return new self($id, $label);
     }
 
     public function icon(string $icon): self
@@ -43,9 +57,10 @@ final class TreeNode implements JsonSerializable
         return $this;
     }
 
-    public function badge(string $badge): self
+    public function badge(string $badge, Color|ColorName|string|null $color = null): self
     {
         $this->badge = $badge;
+        $this->badgeColor = $color;
 
         return $this;
     }
@@ -67,6 +82,14 @@ final class TreeNode implements JsonSerializable
     public function actions(ActionGroup $group): self
     {
         $this->actions = $group;
+
+        return $this;
+    }
+
+    /** @param  list<Component>  $components */
+    public function schema(array $components): self
+    {
+        $this->schema = $components;
 
         return $this;
     }
@@ -112,7 +135,7 @@ final class TreeNode implements JsonSerializable
      */
     private static function fromArray(array $node): self
     {
-        $tree = self::make((string) $node['label'], (string) $node['id']);
+        $tree = self::make((string) $node['id'], (string) $node['label']);
 
         foreach (['icon', 'badge', 'href'] as $key) {
             if (isset($node[$key])) {
@@ -157,12 +180,17 @@ final class TreeNode implements JsonSerializable
      */
     public function serialiseShallow(): array
     {
-        $data = ['id' => $this->id, 'label' => $this->label];
+        $data = [
+            'id' => $this->id,
+            'label' => $this->label,
+            'schema' => array_map(
+                static fn (Component $component): array => $component->jsonSerialize(),
+                $this->compiledSchema(),
+            ),
+        ];
 
-        foreach (['icon' => $this->icon, 'badge' => $this->badge, 'href' => $this->href] as $key => $value) {
-            if ($value !== null) {
-                $data[$key] = $value;
-            }
+        if ($this->href !== null) {
+            $data['href'] = $this->href;
         }
 
         if ($this->disabled) {
@@ -173,10 +201,44 @@ final class TreeNode implements JsonSerializable
             $data['hasChildren'] = true;
         }
 
-        if ($this->actions !== null) {
-            $data['actions'] = $this->actions->jsonSerialize();
+        return $data;
+    }
+
+    /** @return list<Component> */
+    private function compiledSchema(): array
+    {
+        if ($this->schema !== null) {
+            return $this->schema;
         }
 
-        return $data;
+        $schema = [];
+
+        if ($this->icon !== null) {
+            $schema[] = Icon::make($this->icon)->class('size-lt-icon-md shrink-0');
+        }
+
+        $schema[] = $this->href !== null && ! $this->disabled
+            ? Link::make($this->label)->href($this->href)
+            : Text::make($this->label);
+
+        if ($this->badge !== null) {
+            $badge = Badge::make($this->badge);
+
+            if ($this->badgeColor !== null) {
+                $badge->color($this->badgeColor);
+            }
+
+            $schema[] = $badge;
+        }
+
+        if ($this->actions !== null) {
+            $schema[] = Stack::make()
+                ->direction(StackDirection::Row)
+                ->width(Width::Auto)
+                ->float(Side::End)
+                ->schema([$this->actions]);
+        }
+
+        return $schema;
     }
 }

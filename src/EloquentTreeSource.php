@@ -133,8 +133,8 @@ final class EloquentTreeSource implements TreeSource
 
         return array_values($rows->map(
             fn (Model $row): TreeNode => TreeNode::make(
-                (string) $row->getAttribute($this->labelKey),
                 (string) $row->getKey(),
+                (string) $row->getAttribute($this->labelKey),
             )->hasChildren((bool) $row->getAttribute('lattice_tree_has_children')),
         )->all());
     }
@@ -179,8 +179,8 @@ final class EloquentTreeSource implements TreeSource
         foreach ($modelsByParent as $parent => $models) {
             $this->childrenByParent[$parent] = array_map(
                 fn (Model $model): TreeNode => TreeNode::make(
-                    (string) $model->getAttribute($this->labelKey),
                     (string) $model->getKey(),
+                    (string) $model->getAttribute($this->labelKey),
                 )->hasChildren(isset($modelsByParent[(string) $model->getKey()])),
                 $models,
             );

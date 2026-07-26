@@ -12,7 +12,6 @@
         "laravel-best-practices",
         "pest-testing",
         "inertia-react-development",
-        "echo-react-development",
         "tailwindcss-development"
     ]
 }

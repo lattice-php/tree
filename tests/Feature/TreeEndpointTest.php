@@ -18,9 +18,29 @@ it('serves one level of children for a sealed tree', function (): void {
         ['X-Lattice-Ref' => $tree['props']['ref']],
     );
 
-    $response->assertOk()->assertExactJson([
+    $response->assertOk();
+
+    $laptopsId = (string) Category::query()->where('name', 'Laptops')->value('id');
+
+    $response->assertExactJson([
         'nodes' => [
-            ['id' => (string) Category::query()->where('name', 'Laptops')->value('id'), 'label' => 'Laptops', 'hasChildren' => true],
+            [
+                'id' => $laptopsId,
+                'label' => 'Laptops',
+                'schema' => [
+                    [
+                        'type' => 'text',
+                        'props' => [
+                            'text' => 'Laptops',
+                            'align' => null,
+                            'color' => null,
+                            'copyable' => false,
+                            'size' => 'md',
+                        ],
+                    ],
+                ],
+                'hasChildren' => true,
+            ],
         ],
     ]);
 });

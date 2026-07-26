@@ -52,7 +52,7 @@ it('serializes a skeleton without nodes for lazy eagerDepth 0', function (): voi
 });
 
 it('throws when lazy is called on a tree without a definition', function (): void {
-    Tree::make('inline')->nodes([TreeNode::make('A', '1')])->lazy();
+    Tree::make('inline')->nodes([TreeNode::make('1', 'A')])->lazy();
 })->throws(LogicException::class);
 
 it('rejects a negative eager depth', function (): void {
@@ -64,7 +64,7 @@ it('hides the tree when the definition denies authorization', function (): void 
 });
 
 it('keeps interactive props inert on plain eager trees', function (): void {
-    $node = wire(Tree::make()->nodes([TreeNode::make('A', '1')]));
+    $node = wire(Tree::make()->nodes([TreeNode::make('1', 'A')]));
 
     expect($node['props']['ref'])->toBeNull()
         ->and($node['props']['endpoint'])->toBeNull()

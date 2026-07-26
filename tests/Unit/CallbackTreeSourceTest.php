@@ -6,8 +6,8 @@ use Lattice\Tree\TreeNode;
 
 it('resolves roots and children from closures', function (): void {
     $source = new CallbackTreeSource(
-        roots: fn (): array => [TreeNode::make('Root', '1')->hasChildren()],
-        children: fn (string $parentId): array => [TreeNode::make("Child of {$parentId}", "{$parentId}.1")],
+        roots: fn (): array => [TreeNode::make('1', 'Root')->hasChildren()],
+        children: fn (string $parentId): array => [TreeNode::make("{$parentId}.1", "Child of {$parentId}")],
     );
 
     expect($source->roots()[0]->jsonSerialize())->toMatchArray(['id' => '1', 'hasChildren' => true])

@@ -3,7 +3,7 @@ import { router } from "@inertiajs/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRegistry, eagerComponent } from "@lattice-php/lattice/core";
 import type { RendererComponent } from "@lattice-php/lattice/core";
-import { fakeNode, renderWithRegistry } from "./test-support";
+import { fakeNode, renderWithRegistry, TestText, treeNode } from "./test-support";
 import TreeComponent, { type TreeNodeData } from "./tree";
 
 vi.mock("@inertiajs/react", async () => (await import("./test-support")).inertiaMock());
@@ -18,6 +18,7 @@ const TestAction: RendererComponent = ({ node }) => (
 const registry = createRegistry({
   components: {
     "test.action": eagerComponent(TestAction),
+    "test.text": eagerComponent(TestText),
     tree: eagerComponent(TreeComponent),
   },
   name: "test/tree-keyboard",
@@ -43,15 +44,10 @@ function renderTree(props: Record<string, unknown>, id = "t1") {
 }
 
 const nodes: TreeNodeData[] = [
-  {
-    children: [
-      { href: "/c/2", id: "2", label: "Laptops" },
-      { id: "3", label: "Phones" },
-    ],
-    id: "1",
-    label: "Electronics",
-  },
-  { hasChildren: true, id: "9", label: "Suppliers" },
+  treeNode("1", "Electronics", {
+    children: [treeNode("2", "Laptops", { href: "/c/2" }), treeNode("3", "Phones")],
+  }),
+  treeNode("9", "Suppliers", { hasChildren: true }),
 ];
 
 function item(id: string): HTMLElement {
@@ -59,15 +55,10 @@ function item(id: string): HTMLElement {
 }
 
 const outOfOrderNodes: TreeNodeData[] = [
-  {
-    children: [
-      { id: "20", label: "Second Child" },
-      { id: "10", label: "First Child" },
-    ],
-    id: "9",
-    label: "First Root",
-  },
-  { id: "1", label: "Second Root" },
+  treeNode("9", "First Root", {
+    children: [treeNode("20", "Second Child"), treeNode("10", "First Child")],
+  }),
+  treeNode("1", "Second Root"),
 ];
 
 describe("Tree keyboard navigation", () => {
@@ -266,12 +257,13 @@ describe("Tree keyboard navigation", () => {
 
   it("excludes a node's action control from the page tab order", () => {
     const actionNodes: TreeNodeData[] = [
-      {
-        actions: { props: { label: "Delete" }, type: "test.action" },
-        id: "5",
-        label: "Accessories",
-      },
-    ] as unknown as TreeNodeData[];
+      treeNode("5", "Accessories", {
+        schema: [
+          { props: { text: "Accessories" }, type: "test.text" },
+          { props: { label: "Delete" }, type: "test.action" },
+        ],
+      }),
+    ];
 
     renderTree({ nodes: actionNodes });
 
@@ -280,12 +272,13 @@ describe("Tree keyboard navigation", () => {
 
   it("triggers the focused node's action control on Enter when it has no href", () => {
     const actionNodes: TreeNodeData[] = [
-      {
-        actions: { props: { label: "Delete" }, type: "test.action" },
-        id: "5",
-        label: "Accessories",
-      },
-    ] as unknown as TreeNodeData[];
+      treeNode("5", "Accessories", {
+        schema: [
+          { props: { text: "Accessories" }, type: "test.text" },
+          { props: { label: "Delete" }, type: "test.action" },
+        ],
+      }),
+    ];
 
     renderTree({ nodes: actionNodes });
     item("5").focus();
@@ -298,12 +291,13 @@ describe("Tree keyboard navigation", () => {
 
   it("triggers the focused node's action control on Space when it has no href", () => {
     const actionNodes: TreeNodeData[] = [
-      {
-        actions: { props: { label: "Delete" }, type: "test.action" },
-        id: "5",
-        label: "Accessories",
-      },
-    ] as unknown as TreeNodeData[];
+      treeNode("5", "Accessories", {
+        schema: [
+          { props: { text: "Accessories" }, type: "test.text" },
+          { props: { label: "Delete" }, type: "test.action" },
+        ],
+      }),
+    ];
 
     renderTree({ nodes: actionNodes });
     item("5").focus();
@@ -315,13 +309,14 @@ describe("Tree keyboard navigation", () => {
 
   it("prefers href over an action when both are present", () => {
     const hrefAndActionNodes: TreeNodeData[] = [
-      {
-        actions: { props: { label: "Delete" }, type: "test.action" },
+      treeNode("5", "Accessories", {
         href: "/c/5",
-        id: "5",
-        label: "Accessories",
-      },
-    ] as unknown as TreeNodeData[];
+        schema: [
+          { props: { text: "Accessories" }, type: "test.text" },
+          { props: { label: "Delete" }, type: "test.action" },
+        ],
+      }),
+    ];
 
     renderTree({ nodes: hrefAndActionNodes });
     item("5").focus();
