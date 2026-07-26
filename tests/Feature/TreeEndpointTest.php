@@ -18,11 +18,18 @@ it('serves one level of children for a sealed tree', function (): void {
         ['X-Lattice-Ref' => $tree['props']['ref']],
     );
 
-    $response->assertOk()->assertExactJson([
-        'nodes' => [
-            ['id' => (string) Category::query()->where('name', 'Laptops')->value('id'), 'label' => 'Laptops', 'hasChildren' => true],
-        ],
-    ]);
+    $response->assertOk();
+
+    $node = $response->json('nodes.0');
+
+    expect($node)->toMatchArray([
+        'id' => (string) Category::query()->where('name', 'Laptops')->value('id'),
+        'label' => 'Laptops',
+        'hasChildren' => true,
+    ])
+        ->and($node['schema'])->toHaveCount(1)
+        ->and($node['schema'][0]['type'])->toBe('text')
+        ->and($node['schema'][0]['props']['text'])->toBe('Laptops');
 });
 
 it('serves the roots when no parent is given', function (): void {

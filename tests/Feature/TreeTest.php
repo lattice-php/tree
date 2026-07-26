@@ -8,7 +8,7 @@ use Lattice\Tree\TreeNode;
 it('serializes an eager node tree with defaults', function (): void {
     $node = wire(
         Tree::make()->nodes([
-            TreeNode::make('Electronics', '1')->children([TreeNode::make('Laptops', '2')]),
+            TreeNode::make('1', 'Electronics')->children([TreeNode::make('2', 'Laptops')]),
         ]),
     );
 
@@ -21,7 +21,7 @@ it('serializes an eager node tree with defaults', function (): void {
 
 it('serializes activeId, defaultExpanded, and rememberState', function (): void {
     $node = wire(
-        Tree::make()->nodes([TreeNode::make('A', '1')])->activeId('1')->defaultExpanded(['1'])->rememberState(),
+        Tree::make()->nodes([TreeNode::make('1', 'A')])->activeId('1')->defaultExpanded(['1'])->rememberState(),
     );
 
     expect($node['props'])->toMatchArray([
@@ -31,13 +31,13 @@ it('serializes activeId, defaultExpanded, and rememberState', function (): void 
 
 it('serializes source children recursively for hasChildren nodes', function (): void {
     $childrenByParent = [
-        'root' => [TreeNode::make('Child', 'child')->hasChildren()],
-        'child' => [TreeNode::make('Grandchild', 'grandchild')],
+        'root' => [TreeNode::make('child', 'Child')->hasChildren()],
+        'child' => [TreeNode::make('grandchild', 'Grandchild')],
     ];
 
     $node = wire(
         Tree::make()->source(new CallbackTreeSource(
-            roots: fn (): array => [TreeNode::make('Root', 'root')->hasChildren()],
+            roots: fn (): array => [TreeNode::make('root', 'Root')->hasChildren()],
             children: fn (string $parentId): array => $childrenByParent[$parentId] ?? [],
         )),
     );
@@ -53,11 +53,11 @@ it('stops fetching source children at the depth cap so cyclic data terminates', 
 
     $node = wire(
         Tree::make()->source(new CallbackTreeSource(
-            roots: fn (): array => [TreeNode::make('Root', 'n0')->hasChildren()],
+            roots: fn (): array => [TreeNode::make('n0', 'Root')->hasChildren()],
             children: function (string $parentId) use (&$fetches): array {
                 $fetches++;
 
-                return [TreeNode::make('Child', "n{$fetches}")->hasChildren()];
+                return [TreeNode::make("n{$fetches}", 'Child')->hasChildren()];
             },
         )),
     );
@@ -72,9 +72,9 @@ it('stops fetching source children at the depth cap so cyclic data terminates', 
 });
 
 it('truncates eager children at the depth cap with a hasChildren marker', function (): void {
-    $subtree = TreeNode::make('Leaf', 'leaf');
+    $subtree = TreeNode::make('leaf', 'Leaf');
     foreach (range(51, 0) as $level) {
-        $subtree = TreeNode::make("Level {$level}", "n{$level}")->children([$subtree]);
+        $subtree = TreeNode::make("n{$level}", "Level {$level}")->children([$subtree]);
     }
 
     $node = wire(Tree::make()->nodes([$subtree]));

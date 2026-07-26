@@ -34,23 +34,23 @@ final class TreePage extends WorkbenchPage
                     Text::make('A hierarchy rendered by the lattice-php/tree component package.'),
                     Tree::make('demo-tree')
                         ->nodes([
-                            TreeNode::make('Electronics', 'electronics')
+                            TreeNode::make('electronics', 'Electronics')
                                 ->children([
-                                    TreeNode::make('Laptops', 'electronics-laptops'),
-                                    TreeNode::make('Phones', 'electronics-phones'),
-                                    TreeNode::make('Accessories', 'electronics-accessories')
+                                    TreeNode::make('electronics-laptops', 'Laptops'),
+                                    TreeNode::make('electronics-phones', 'Phones'),
+                                    TreeNode::make('electronics-accessories', 'Accessories')
                                         ->children([
-                                            TreeNode::make('Cases', 'electronics-accessories-cases'),
-                                            TreeNode::make('Chargers', 'electronics-accessories-chargers'),
+                                            TreeNode::make('electronics-accessories-cases', 'Cases'),
+                                            TreeNode::make('electronics-accessories-chargers', 'Chargers'),
                                         ]),
                                 ]),
-                            TreeNode::make('Clothing', 'clothing')
+                            TreeNode::make('clothing', 'Clothing')
                                 ->children([
-                                    TreeNode::make('Men', 'clothing-men'),
-                                    TreeNode::make('Women', 'clothing-women')->href('/plain'),
-                                    TreeNode::make('Kids', 'clothing-kids'),
+                                    TreeNode::make('clothing-men', 'Men'),
+                                    TreeNode::make('clothing-women', 'Women')->href('/plain'),
+                                    TreeNode::make('clothing-kids', 'Kids'),
                                 ]),
-                            TreeNode::make('Documents', 'documents')
+                            TreeNode::make('documents', 'Documents')
                                 ->actions(
                                     ActionGroup::make('tree-documents-actions')
                                         ->actions([
@@ -58,12 +58,12 @@ final class TreePage extends WorkbenchPage
                                             Action::make('tree-documents-archive')->label('Archive'),
                                         ]),
                                 ),
-                            TreeNode::make('Furniture', 'furniture')
+                            TreeNode::make('furniture', 'Furniture')
                                 ->children([
-                                    TreeNode::make('Sofas', 'furniture-sofas'),
-                                    TreeNode::make('Beds', 'furniture-beds'),
+                                    TreeNode::make('furniture-sofas', 'Sofas'),
+                                    TreeNode::make('furniture-beds', 'Beds'),
                                 ]),
-                            TreeNode::make('Help', 'help')
+                            TreeNode::make('help', 'Help')
                                 ->action(Action::use(ShowTreeNodeInfoAction::class)),
                         ])
                         ->activeId('electronics-phones')
