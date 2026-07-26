@@ -48,7 +48,7 @@ final class TreePage extends WorkbenchPage
                                 ->children([
                                     TreeNode::make('clothing-men', 'Men'),
                                     TreeNode::make('clothing-women', 'Women')->href('/plain'),
-                                    TreeNode::make('clothing-kids', 'Kids'),
+                                    TreeNode::make('clothing-kids', 'Kids')->badge('New', 'blue'),
                                 ]),
                             TreeNode::make('documents', 'Documents')
                                 ->actions(
