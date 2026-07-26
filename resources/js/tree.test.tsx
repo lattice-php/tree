@@ -89,6 +89,20 @@ describe("Tree component", () => {
     expect(screen.getByRole("button", { name: "Delete" })).toBeVisible();
   });
 
+  it("keeps the label as the treeitem's accessible name even when the schema omits it", () => {
+    const hiddenLabelNodes: TreeNodeData[] = [
+      {
+        id: "7",
+        label: "Hidden Label",
+        schema: [{ props: { text: "something else" }, type: "test.text" }],
+      },
+    ];
+
+    renderTree({ nodes: hiddenLabelNodes });
+
+    expect(screen.getByRole("treeitem", { name: "Hidden Label" })).toBeInTheDocument();
+  });
+
   it("persists expanded ids when rememberState is set", () => {
     window.localStorage.clear();
 

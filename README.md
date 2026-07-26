@@ -56,7 +56,9 @@ TreeNode::make('acme-corp', 'Acme Corp')
 ```
 
 `->schema()` is an escape hatch, not an addition — it replaces the default body entirely. `label` is still
-required and keeps driving typeahead and aria announcements even when the schema does not render it.
+required and keeps driving typeahead and aria announcements even when the schema does not render it. On
+Enter/Space, a node without an `href` activates the first button found in its body, so a custom schema should
+put its primary action's button first — or expect it to receive Enter.
 
 Or back it with an Eloquent adjacency list (a self-referencing `parent_id` column):
 

@@ -186,6 +186,7 @@ function TreeItem({
     <li
       aria-disabled={isDisabled}
       aria-expanded={expandable ? isExpanded : undefined}
+      aria-label={node.label}
       aria-level={depth}
       aria-posinset={siblingIndex}
       aria-selected={isActive}

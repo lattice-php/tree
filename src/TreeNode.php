@@ -6,7 +6,6 @@ namespace Lattice\Tree;
 use JsonSerializable;
 use Lattice\Lattice\Actions\Components\Action;
 use Lattice\Lattice\Actions\Components\ActionGroup;
-use Lattice\Lattice\Attributes\TypeScript;
 use Lattice\Lattice\Core\Color;
 use Lattice\Lattice\Core\Enums\ColorName;
 use Lattice\Lattice\Ui\Components\Badge;
@@ -19,7 +18,6 @@ use Lattice\Lattice\Ui\Enums\Side;
 use Lattice\Lattice\Ui\Enums\StackDirection;
 use Lattice\Lattice\Ui\Enums\Width;
 
-#[TypeScript]
 final class TreeNode implements JsonSerializable
 {
     /** @var list<Component>|null */
