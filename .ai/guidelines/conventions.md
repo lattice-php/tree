@@ -29,5 +29,10 @@
   no contribution seam.
 - **No dead chevrons.** A node with `hasChildren` but no loadable endpoint renders as a leaf; the chevron appears
   only when children exist inline or can be fetched.
+- **Nodes are schema-based.** `TreeNode::make($id, $label)`'s conveniences (`->icon()`, `->badge()`, `->href()`,
+  `->action()`/`->actions()`) compile server-side into a canonical `schema` of core components; `->schema()`
+  overrides that compilation entirely rather than composing with it. `label`, `href`, and `disabled` stay plain
+  wire props alongside `schema` — chrome (chevron, focus, keyboard, typeahead/aria, which reads `label`) is
+  renderer-owned and never part of the schema.
 - **Version coupling.** The package requires `lattice-php/lattice` `^0.26`; features that depend on newer core APIs must
   bump that constraint and wait for the corresponding core release.

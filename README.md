@@ -25,14 +25,38 @@ use Lattice\Tree\Tree;
 use Lattice\Tree\TreeNode;
 
 Tree::make('categories')->nodes([
-    TreeNode::make('Electronics', 'electronics')
+    TreeNode::make('electronics', 'Electronics')
         ->icon('cpu')
         ->children([
-            TreeNode::make('Laptops', 'electronics-laptops'),
-            TreeNode::make('Phones', 'electronics-phones')->href('/products/phones'),
+            TreeNode::make('electronics-laptops', 'Laptops'),
+            TreeNode::make('electronics-phones', 'Phones')->href('/products/phones'),
         ]),
 ])->defaultExpanded(['electronics']);
 ```
+
+Nodes compile their conveniences (`->icon()`, `->badge()`, `->href()`, `->action()`/`->actions()`) into a
+canonical body schema of core components — an icon, a text-or-link label, a badge, and an end-floated action
+stack. `->badge($label, $color)` accepts any Lattice color.
+
+### Custom node content
+
+For content the conveniences do not cover, `->schema()` replaces the composed body outright:
+
+```php
+use Lattice\Lattice\Ui\Components\Avatar;
+use Lattice\Lattice\Ui\Components\Badge;
+use Lattice\Lattice\Ui\Components\Text;
+
+TreeNode::make('acme-corp', 'Acme Corp')
+    ->schema([
+        Avatar::make('/avatars/acme.png'),
+        Text::make('Acme Corp'),
+        Badge::make('Pro')->color('purple'),
+    ]);
+```
+
+`->schema()` is an escape hatch, not an addition — it replaces the default body entirely. `label` is still
+required and keeps driving typeahead and aria announcements even when the schema does not render it.
 
 Or back it with an Eloquent adjacency list (a self-referencing `parent_id` column):
 
