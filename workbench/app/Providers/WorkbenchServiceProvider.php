@@ -22,6 +22,7 @@ class WorkbenchServiceProvider extends ServiceProvider
         config([
             'lattice.discover' => [package_path('workbench/app')],
             'lattice.trees.middleware' => ['web'],
+            'lattice.actions.middleware' => ['web'],
         ]);
 
         $this->readBoostConfigFromPackageRoot();

@@ -15,8 +15,10 @@ use Lattice\Lattice\Ui\Components\Stack;
 use Lattice\Lattice\Ui\Enums\Gap;
 use Lattice\Lattice\Ui\Enums\StackDirection;
 use Lattice\Lattice\Ui\Enums\Width;
+use Workbench\App\Pages\ExpandedLazyTreePage;
 use Workbench\App\Pages\LazyTreePage;
 use Workbench\App\Pages\PlainPage;
+use Workbench\App\Pages\SkeletonLazyTreePage;
 use Workbench\App\Pages\TreePage;
 
 #[AsLayout('app')]
@@ -33,6 +35,8 @@ final class AppLayout extends LayoutDefinition
                         Menu::make('sidebar')->items([
                             MenuItem::fromPage(TreePage::class)->key('tree')->label('Tree'),
                             MenuItem::fromPage(LazyTreePage::class)->key('tree-lazy')->label('Lazy tree'),
+                            MenuItem::fromPage(ExpandedLazyTreePage::class)->key('tree-lazy-expanded')->label('Lazy, pre-expanded'),
+                            MenuItem::fromPage(SkeletonLazyTreePage::class)->key('tree-lazy-skeleton')->label('Lazy skeleton'),
                             MenuItem::fromPage(PlainPage::class)->key('plain')->label('Plain'),
                         ]),
                     ]),
