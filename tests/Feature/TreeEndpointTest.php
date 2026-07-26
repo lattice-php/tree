@@ -20,16 +20,29 @@ it('serves one level of children for a sealed tree', function (): void {
 
     $response->assertOk();
 
-    $node = $response->json('nodes.0');
+    $laptopsId = (string) Category::query()->where('name', 'Laptops')->value('id');
 
-    expect($node)->toMatchArray([
-        'id' => (string) Category::query()->where('name', 'Laptops')->value('id'),
-        'label' => 'Laptops',
-        'hasChildren' => true,
-    ])
-        ->and($node['schema'])->toHaveCount(1)
-        ->and($node['schema'][0]['type'])->toBe('text')
-        ->and($node['schema'][0]['props']['text'])->toBe('Laptops');
+    $response->assertExactJson([
+        'nodes' => [
+            [
+                'id' => $laptopsId,
+                'label' => 'Laptops',
+                'schema' => [
+                    [
+                        'type' => 'text',
+                        'props' => [
+                            'text' => 'Laptops',
+                            'align' => null,
+                            'color' => null,
+                            'copyable' => false,
+                            'size' => 'md',
+                        ],
+                    ],
+                ],
+                'hasChildren' => true,
+            ],
+        ],
+    ]);
 });
 
 it('serves the roots when no parent is given', function (): void {
