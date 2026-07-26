@@ -6,8 +6,10 @@ import {
   type ComponentPropsOf,
   type Node,
   type Registry,
+  type RendererComponent,
   type Schema,
 } from "@lattice-php/lattice/core";
+import type { TreeNodeData } from "./tree";
 
 /**
  * The slice of `@inertiajs/react` the tree renderer touches — `router.visit`
@@ -25,7 +27,7 @@ export function inertiaMock(): Record<string, unknown> {
 
 /**
  * Renders `ui` with `registry` available to the core `<Renderer>` (used here to
- * render a node's trailing actions), mirroring what the app Provider does.
+ * render a node's schema body), mirroring what the app Provider does.
  */
 export function renderWithRegistry(
   ui: ReactElement,
@@ -51,4 +53,19 @@ export function fakeNode<TType extends string>(node: {
   props?: Partial<ComponentPropsOf<TType>>;
 }): Node<TType> {
   return node as unknown as Node<TType>;
+}
+
+/**
+ * Stand-in body component registered under `"test.text"` alongside
+ * `"test.action"`, mirroring the compiled `text` envelope a real node's
+ * schema carries.
+ */
+export const TestText: RendererComponent = ({ node }) => <span>{String(node.props?.text ?? "")}</span>;
+
+/**
+ * Builds a schema-shaped `TreeNodeData` fixture so tests can stay terse
+ * without hand-writing the wrapping `test.text` envelope every time.
+ */
+export function treeNode(id: string, label: string, extra: Partial<TreeNodeData> = {}): TreeNodeData {
+  return { id, label, schema: [{ props: { text: label }, type: "test.text" }], ...extra } as TreeNodeData;
 }

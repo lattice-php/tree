@@ -2,25 +2,25 @@ import { router } from "@inertiajs/react";
 import { useEffect, useRef } from "react";
 import type { KeyboardEvent } from "react";
 import { cn, nodeIdentity, Renderer } from "@lattice-php/lattice/core";
-import type { Node, RendererComponent } from "@lattice-php/lattice/core";
-import { Icon, IconRenderer } from "@lattice-php/lattice/icons";
+import type { RendererComponent, Schema } from "@lattice-php/lattice/core";
+import { Icon } from "@lattice-php/lattice/icons";
 import { useT } from "@lattice-php/lattice/i18n";
-import { Badge, TextLink } from "@lattice-php/lattice/ui";
 import { ROOTS_KEY, TreeContext, useTreeContext, useTreeState } from "./tree-context";
 
 /**
  * The sparse wire shape a tree node serializes as (see `TreeNode::jsonSerialize()`):
- * every optional/falsy field is omitted rather than sent as `null`/`false`.
+ * every optional/falsy field is omitted rather than sent as `null`/`false`. `schema`
+ * is the compiled body — icon/text-or-link/badge/actions — rendered by core's
+ * `<Renderer>`; `label` stays a plain string used for typeahead and registry
+ * registration, not for rendering.
  */
 export type TreeNodeData = {
   readonly id: string;
   readonly label: string;
-  icon?: string;
-  badge?: string;
+  schema: Schema;
   href?: string;
   disabled?: boolean;
   hasChildren?: boolean;
-  actions?: Node<"action"> | Node<"action.bulk"> | Node<"action.group">;
   children?: TreeNodeData[];
 };
 
@@ -90,7 +90,7 @@ function TreeItem({
   const children = node.children ?? childrenFor(node.id);
   const expandable = isExpandable(node, children, canLoad);
   const loading = isLoading(node.id);
-  const actionsRef = useRef<HTMLSpanElement>(null);
+  const bodyRef = useRef<HTMLSpanElement>(null);
 
   // Fetching is an effect of "expanded but unloaded", so chevron clicks,
   // ArrowRight, defaultExpanded, and a rememberState restore all share it.
@@ -107,7 +107,7 @@ function TreeItem({
   }, [node.id, node.label, orderPath, parentPath, path, register, unregister]);
 
   useEffect(() => {
-    const container = actionsRef.current;
+    const container = bodyRef.current;
 
     if (!container) {
       return;
@@ -116,7 +116,7 @@ function TreeItem({
     container.querySelectorAll<HTMLElement>("button, a[href], [tabindex]").forEach((control) => {
       control.tabIndex = -1;
     });
-  }, [node.actions]);
+  }, [node.schema]);
 
   function onKeyDown(event: KeyboardEvent<HTMLLIElement>): void {
     if (event.target !== event.currentTarget) {
@@ -164,11 +164,15 @@ function TreeItem({
         }
         if (node.href) {
           router.visit(node.href);
-        } else if (node.actions) {
-          actionsRef.current?.querySelector("button")?.click();
-          ref.current?.focus();
         } else {
-          activate(node.id);
+          const trigger = bodyRef.current?.querySelector("button");
+
+          if (trigger) {
+            trigger.click();
+            ref.current?.focus();
+          } else {
+            activate(node.id);
+          }
         }
         return;
       default:
@@ -224,20 +228,9 @@ function TreeItem({
             )}
           </button>
         ) : null}
-        {node.icon ? <IconRenderer className="size-lt-icon-md shrink-0" icon={node.icon} /> : null}
-        {node.href && !isDisabled ? (
-          <TextLink href={node.href} tabIndex={-1}>
-            {node.label}
-          </TextLink>
-        ) : (
-          <span>{node.label}</span>
-        )}
-        {node.badge ? <Badge>{node.badge}</Badge> : null}
-        {node.actions ? (
-          <span className="ml-auto" ref={actionsRef}>
-            <Renderer nodes={[node.actions]} />
-          </span>
-        ) : null}
+        <span className="flex min-w-0 flex-1 items-center gap-2" ref={bodyRef}>
+          <Renderer nodes={node.schema} />
+        </span>
       </div>
       {expandable && isExpanded && children && children.length > 0 ? (
         <ul className="pl-6" role="group">

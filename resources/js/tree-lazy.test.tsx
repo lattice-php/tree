@@ -1,11 +1,11 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRegistry, eagerComponent } from "@lattice-php/lattice/core";
-import { fakeNode, renderWithRegistry } from "./test-support";
+import { fakeNode, renderWithRegistry, TestText, treeNode } from "./test-support";
 import TreeComponent, { type TreeNodeData } from "./tree";
 
 const registry = createRegistry({
-  components: { tree: eagerComponent(TreeComponent) },
+  components: { "test.text": eagerComponent(TestText), tree: eagerComponent(TreeComponent) },
   name: "test/tree-lazy",
 });
 
@@ -46,13 +46,13 @@ function renderLazyTree(props: Record<string, unknown>, id = "lazy-tree") {
 }
 
 const roots: TreeNodeData[] = [
-  { hasChildren: true, id: "electronics", label: "Electronics" },
-  { id: "books", label: "Books" },
+  treeNode("electronics", "Electronics", { hasChildren: true }),
+  treeNode("books", "Books"),
 ];
 
 describe("lazy tree", () => {
   it("fetches children once when a node expands via its chevron", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ nodes: [{ id: "laptops", label: "Laptops" }] }));
+    fetchMock.mockResolvedValue(jsonResponse({ nodes: [treeNode("laptops", "Laptops")] }));
     renderLazyTree({ nodes: roots });
 
     fireEvent.click(screen.getByTestId("tree-node-electronics-toggle"));
@@ -66,7 +66,7 @@ describe("lazy tree", () => {
   });
 
   it("fetches children when ArrowRight expands a collapsed node", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ nodes: [{ id: "laptops", label: "Laptops" }] }));
+    fetchMock.mockResolvedValue(jsonResponse({ nodes: [treeNode("laptops", "Laptops")] }));
     renderLazyTree({ nodes: roots });
 
     fireEvent.keyDown(screen.getByTestId("tree-node-electronics"), { key: "ArrowRight" });
@@ -76,7 +76,7 @@ describe("lazy tree", () => {
   });
 
   it("fetches on mount for nodes in defaultExpanded", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ nodes: [{ id: "laptops", label: "Laptops" }] }));
+    fetchMock.mockResolvedValue(jsonResponse({ nodes: [treeNode("laptops", "Laptops")] }));
     renderLazyTree({ defaultExpanded: ["electronics"], nodes: roots });
 
     expect(await screen.findByText("Laptops")).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("lazy tree", () => {
   });
 
   it("does not refetch cached children on collapse and re-expand", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ nodes: [{ id: "laptops", label: "Laptops" }] }));
+    fetchMock.mockResolvedValue(jsonResponse({ nodes: [treeNode("laptops", "Laptops")] }));
     renderLazyTree({ nodes: roots });
 
     const toggle = screen.getByTestId("tree-node-electronics-toggle");
@@ -102,7 +102,7 @@ describe("lazy tree", () => {
   it("collapses on a failed fetch and retries on the next expand", async () => {
     fetchMock
       .mockRejectedValueOnce(new Error("network down"))
-      .mockResolvedValue(jsonResponse({ nodes: [{ id: "laptops", label: "Laptops" }] }));
+      .mockResolvedValue(jsonResponse({ nodes: [treeNode("laptops", "Laptops")] }));
     renderLazyTree({ nodes: roots });
 
     const item = () => screen.getByTestId("tree-node-electronics");

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { createRegistry, eagerComponent } from "@lattice-php/lattice/core";
 import type { RendererComponent } from "@lattice-php/lattice/core";
-import { fakeNode, renderWithRegistry } from "./test-support";
+import { fakeNode, renderWithRegistry, TestText, treeNode } from "./test-support";
 import TreeComponent, { type TreeNodeData } from "./tree";
 
 const TestAction: RendererComponent = ({ node }) => (
@@ -12,6 +12,7 @@ const TestAction: RendererComponent = ({ node }) => (
 const registry = createRegistry({
   components: {
     "test.action": eagerComponent(TestAction),
+    "test.text": eagerComponent(TestText),
     tree: eagerComponent(TreeComponent),
   },
   name: "test/tree",
@@ -28,15 +29,10 @@ function renderTree(props: Record<string, unknown>, id = "t1") {
 }
 
 const nodes: TreeNodeData[] = [
-  {
-    children: [
-      { href: "/c/2", id: "2", label: "Laptops" },
-      { id: "3", label: "Phones" },
-    ],
-    id: "1",
-    label: "Electronics",
-  },
-  { hasChildren: true, id: "9", label: "Suppliers" },
+  treeNode("1", "Electronics", {
+    children: [treeNode("2", "Laptops", { href: "/c/2" }), treeNode("3", "Phones")],
+  }),
+  treeNode("9", "Suppliers", { hasChildren: true }),
 ];
 
 describe("Tree component", () => {
@@ -69,34 +65,27 @@ describe("Tree component", () => {
     expect(screen.getByTestId("tree-node-3")).toHaveAttribute("aria-selected", "true");
   });
 
-  it("renders an href label as a link", () => {
-    renderTree({ defaultExpanded: ["1"], nodes });
-
-    expect(screen.getByRole("link", { name: "Laptops" })).toHaveAttribute("href", "/c/2");
-  });
-
-  it("marks a disabled node aria-disabled and renders its label as plain text", () => {
-    const disabledNodes: TreeNodeData[] = [
-      { disabled: true, href: "/c/4", id: "4", label: "Tablets" },
-    ];
+  it("marks a disabled node aria-disabled", () => {
+    const disabledNodes: TreeNodeData[] = [treeNode("4", "Tablets", { disabled: true, href: "/c/4" })];
 
     renderTree({ nodes: disabledNodes });
 
     expect(screen.getByTestId("tree-node-4")).toHaveAttribute("aria-disabled", "true");
-    expect(screen.queryByRole("link", { name: "Tablets" })).not.toBeInTheDocument();
   });
 
-  it("renders trailing actions for a node", () => {
-    const actionNodes = [
-      {
-        actions: { props: { label: "Delete" }, type: "test.action" },
-        id: "5",
-        label: "Accessories",
-      },
-    ] as unknown as TreeNodeData[];
+  it("renders a node's schema body", () => {
+    const actionNodes: TreeNodeData[] = [
+      treeNode("5", "Accessories", {
+        schema: [
+          { props: { text: "Accessories" }, type: "test.text" },
+          { props: { label: "Delete" }, type: "test.action" },
+        ],
+      }),
+    ];
 
     renderTree({ nodes: actionNodes });
 
+    expect(screen.getByText("Accessories")).toBeVisible();
     expect(screen.getByRole("button", { name: "Delete" })).toBeVisible();
   });
 
