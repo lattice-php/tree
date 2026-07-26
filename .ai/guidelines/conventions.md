@@ -18,5 +18,5 @@
 - **Eager today; lazy and drag-and-drop are the roadmap.** `Tree` currently serializes the whole hierarchy server-side
   (with a `MAX_DEPTH` cycle guard). Lazy child loading over a signed-ref endpoint and drag-and-drop reordering are the
   planned follow-ups and the reason the component was extracted from core.
-- **Version coupling.** The package requires `lattice-php/lattice` `^0.23`; features that depend on newer core APIs must
+- **Version coupling.** The package requires `lattice-php/lattice` `^0.26`; features that depend on newer core APIs must
   bump that constraint and wait for the corresponding core release.

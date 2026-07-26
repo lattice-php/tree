@@ -90,8 +90,8 @@ there is nothing to seal — so `->lazy()` on them throws.
 ## Translations
 
 The component's strings ship with inline English defaults. With
-[bambamboole/laravel-i18next](https://github.com/bambamboole/laravel-i18next) enabled and
-`@lattice-php/lattice` >= 0.23, the plugin's `tree` namespace is loaded automatically and serves
+[bambamboole/laravel-i18next](https://github.com/bambamboole/laravel-i18next) enabled, the
+plugin's `tree` namespace is loaded automatically and serves
 the bundled `en`/`de` translations (override them like any Laravel package translation).
 
 ## Development
