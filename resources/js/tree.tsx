@@ -232,7 +232,7 @@ function TreeItem({
         ) : (
           <span>{node.label}</span>
         )}
-        {node.badge ? <Badge variant="secondary">{node.badge}</Badge> : null}
+        {node.badge ? <Badge>{node.badge}</Badge> : null}
         {node.actions ? (
           <span className="ml-auto" ref={actionsRef}>
             <Renderer nodes={[node.actions]} />

@@ -5,7 +5,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "lattice-php/lattice": "^0.23"
+        "lattice-php/lattice": "^0.26"
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
