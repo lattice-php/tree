@@ -6,8 +6,8 @@
 /.gitignore export-ignore
 /artisan export-ignore
 /boost.json export-ignore
-/phpunit.xml export-ignore
-/phpstan.neon export-ignore
+/phpunit.xml.dist export-ignore
+/phpstan.neon.dist export-ignore
 /pint.json export-ignore
 /testbench.yaml export-ignore
 /vitest.config.ts export-ignore

@@ -3,9 +3,9 @@
 - This is a first-party companion package for [Lattice](https://github.com/lattice-php/lattice). It ships the Tree
   component — the PHP builder plus its React renderer as **source** (no separate npm package); the consumer's build
   compiles it via Lattice's `lattice()` Vite plugin.
-- The package is developed with Orchestra Testbench, not a full Laravel app. `artisan` at the repo root is a symlink to
-  `vendor/bin/testbench`, so `php artisan <command>` boots the Testbench skeleton with Lattice's and this package's
-  service providers.
+- The package is developed with Orchestra Testbench, not a full Laravel app. `artisan` at the repo root is an executable
+  shim that loads `vendor/bin/testbench`, so `php artisan <command>` boots the Testbench skeleton with Lattice's and
+  this package's service providers.
 - Run the PHP suite with `composer test` (Unit + Feature; the Browser suite is excluded on purpose).
 - Run the JavaScript (renderer) suite with `npm test` (Vitest). The tests exercise the renderer against the **published**
   `@lattice-php/lattice`, so `npm install` before running them.
@@ -13,9 +13,8 @@
   can never test stale assets — do not bypass that by invoking Pest's Browser suite directly after renderer changes.
 - Serve the workbench demo app with `composer serve` (starts at `/tree`; `/tree-lazy` exercises the lazy endpoint
   against a seeded sqlite database — `testbench.yaml` holds the env/migrations/build wiring).
-- The AI tooling overrides for Boost live in `workbench/app/Support/` and are wired in
-  `Workbench\App\Providers\WorkbenchServiceProvider`. They point Boost at the package root instead of the Testbench
-  skeleton.
+- `bambamboole/extended-testbench` rebases Boost and MCP commands to the package root so their generated files never
+  land in the Testbench skeleton.
 - `CLAUDE.md` and `AGENTS.md` are generated (git-ignored). They regenerate automatically after `composer install`; run
   `php artisan boost:update` (or `composer boost:refresh`) by hand after editing files in `.ai/guidelines/`.
 
@@ -47,6 +46,6 @@
   helpers; lazy tests stub `globalThis.fetch`.
 - Endpoint behavior (refs, authorization, context round-trip) is feature-tested through HTTP; seal refs with the
   `TestCase::sealTree()` helper, which wraps core's shipped `InteractsWithLatticeComponents` trait.
-- For real-browser coverage (Playwright via Pest 4) use `tests/Browser`; `BrowserTestCase` guards against a missing or
+- For real-browser coverage (Playwright via Pest 5) use `tests/Browser`; `BrowserTestCase` guards against a missing or
   stale workbench build, and the `assert*Eventually` helpers in `tests/Support/Browser.php` absorb async UI settling.
 - It is acceptable to add stable `data-test` attributes when they make assertions clearer or less brittle.

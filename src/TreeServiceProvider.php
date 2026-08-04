@@ -6,6 +6,7 @@ namespace Lattice\Tree;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Lattice\Lattice\Core\Discovery\DiscoveryKinds;
+use Lattice\Lattice\Facades\Lattice;
 
 final class TreeServiceProvider extends ServiceProvider
 {
@@ -18,10 +19,7 @@ final class TreeServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Registered directly on the loader rather than via loadTranslationsFrom():
-        // the i18next route resolves only the translation loader, never the
-        // translator, so the deferred loadTranslationsFrom() callback would never fire.
-        $this->app->make('translation.loader')->addNamespace('tree', __DIR__.'/../lang');
+        Lattice::translations('tree', __DIR__.'/../lang');
 
         // Core's routes file has no contribution seam, so the package registers
         // its endpoint itself, mirroring core's group conventions

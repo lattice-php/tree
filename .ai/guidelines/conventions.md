@@ -34,5 +34,5 @@
   overrides that compilation entirely rather than composing with it. `label`, `href`, and `disabled` stay plain
   wire props alongside `schema` — chrome (chevron, focus, keyboard, typeahead/aria, which reads `label`) is
   renderer-owned and never part of the schema.
-- **Version coupling.** The package requires `lattice-php/lattice` `^0.26`; features that depend on newer core APIs must
+- **Version coupling.** The package requires `lattice-php/lattice` `^0.36`; features that depend on newer core APIs must
   bump that constraint and wait for the corresponding core release.

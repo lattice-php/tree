@@ -5,17 +5,16 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "lattice-php/lattice": "^0.26"
+        "lattice-php/lattice": "^0.36"
     },
     "require-dev": {
+        "bambamboole/extended-testbench": "^0.6",
         "larastan/larastan": "^3.0",
-        "laravel/boost": "^2.4",
         "laravel/pint": "^1.16",
-        "mrpunyapal/peststan": "^0.2.12",
-        "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
-        "pestphp/pest": "^4.0",
-        "pestphp/pest-plugin-browser": "^4.3",
-        "pestphp/pest-plugin-laravel": "^4.0"
+        "pestphp/pest": "^5.0",
+        "pestphp/pest-plugin-browser": "^5.0",
+        "pestphp/pest-plugin-laravel": "^5.0",
+        "pestphp/pest-plugin-phpstan": "^5.0"
     },
     "autoload": {
         "psr-4": {
@@ -29,6 +28,12 @@
         }
     },
     "extra": {
+        "extended-testbench": {
+            "check-ignore": [
+                "tests/Browser/DummyTest.php",
+                "composer script: lint"
+            ]
+        },
         "lattice": {
             "plugin": "resources/js/plugin.ts",
             "discover": ["src"]
@@ -50,20 +55,19 @@
         "post-update-cmd": [
             "@boost:refresh"
         ],
-        "boost:update": "@php vendor/bin/testbench boost:update --no-interaction",
-        "boost:refresh": "[ -n \"$CI\" ] || [ ! -f vendor/bin/testbench ] || vendor/bin/testbench boost:update --no-interaction",
+        "boost:refresh": "[ -n \"$CI\" ] || [ ! -f vendor/bin/testbench ] || [ ! -f boost.json ] || { [ -f package.json ] && [ ! -d node_modules ]; } || vendor/bin/testbench boost:update --no-interaction || true",
         "serve": "@php vendor/bin/testbench serve",
-        "test": "@php vendor/bin/pest --testsuite Unit,Feature",
+        "test": "pest --exclude-testsuite=Browser",
         "test:browser": [
             "npm run build",
-            "@php vendor/bin/pest --testsuite Browser"
+            "pest --testsuite=Browser"
         ],
         "test:lint": "@php vendor/bin/pint --test",
         "lint": "@php vendor/bin/pint",
-        "analyse": "@php vendor/bin/phpstan analyse",
+        "stan": "phpstan analyse",
         "check": [
-            "@test:lint",
-            "@analyse",
+            "pint --test",
+            "phpstan analyse",
             "@test"
         ]
     },
