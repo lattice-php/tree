@@ -8,11 +8,10 @@
         "lattice-php/lattice": "^0.36"
     },
     "require-dev": {
+        "bambamboole/extended-testbench": "^0.6",
         "larastan/larastan": "^3.0",
-        "laravel/boost": "^2.4",
         "laravel/pint": "^1.16",
         "mrpunyapal/peststan": "^0.2.12",
-        "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-browser": "^4.3",
         "pestphp/pest-plugin-laravel": "^4.0"
@@ -29,6 +28,20 @@
         }
     },
     "extra": {
+        "extended-testbench": {
+            "check-ignore": [
+                "phpunit.xml.dist",
+                "tests/ArchTest.php",
+                "composer script: test",
+                "tests/Browser/DummyTest.php",
+                "composer script: test:browser",
+                "pestphp/pest-plugin-phpstan:^5.0",
+                "phpstan.neon.dist",
+                "composer script: stan",
+                "composer script: lint",
+                "composer script: check"
+            ]
+        },
         "lattice": {
             "plugin": "resources/js/plugin.ts",
             "discover": ["src"]
@@ -50,8 +63,7 @@
         "post-update-cmd": [
             "@boost:refresh"
         ],
-        "boost:update": "@php vendor/bin/testbench boost:update --no-interaction",
-        "boost:refresh": "[ -n \"$CI\" ] || [ ! -f vendor/bin/testbench ] || vendor/bin/testbench boost:update --no-interaction",
+        "boost:refresh": "[ -n \"$CI\" ] || [ ! -f vendor/bin/testbench ] || [ ! -f boost.json ] || { [ -f package.json ] && [ ! -d node_modules ]; } || vendor/bin/testbench boost:update --no-interaction || true",
         "serve": "@php vendor/bin/testbench serve",
         "test": "@php vendor/bin/pest --testsuite Unit,Feature",
         "test:browser": [

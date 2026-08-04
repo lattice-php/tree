@@ -8,3 +8,8 @@ composer.lock
 /CLAUDE.md
 /.claude/
 /.agents/
+/.mcp.json
+/.junie/
+/.codex/
+/.superpowers/
+/docs/superpowers/
