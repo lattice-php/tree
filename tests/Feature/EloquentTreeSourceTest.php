@@ -186,3 +186,29 @@ it('resolves a scoped root-to-parent path for a node', function (): void {
         ->and($source->path((string) $root->getKey()))->toBe([])
         ->and($source->path((string) $hidden->getKey()))->toBeNull();
 });
+
+it('resolves paths deeper than fifty ancestors', function (): void {
+    $parent = Category::factory()->create(['name' => 'Level 0']);
+    $ancestors = [$parent];
+
+    foreach (range(1, 51) as $level) {
+        $parent = Category::factory()->childOf($parent)->create(['name' => "Level {$level}"]);
+        $ancestors[] = $parent;
+    }
+
+    expect(EloquentTreeSource::make(Category::class)->path((string) $parent->getKey()))->toBe(
+        array_map(fn (Category $category): string => (string) $category->getKey(), array_slice($ancestors, 0, -1)),
+    );
+});
+
+it('terminates path lookup when categories contain a cycle', function (): void {
+    $first = Category::factory()->create(['name' => 'First']);
+    $second = Category::factory()->childOf($first)->create(['name' => 'Second']);
+    $first->update(['parent_id' => $second->getKey()]);
+
+    DB::enableQueryLog();
+    $path = EloquentTreeSource::make(Category::class)->path((string) $first->getKey());
+
+    expect($path)->toBeNull()
+        ->and(DB::getQueryLog())->toHaveCount(2);
+});

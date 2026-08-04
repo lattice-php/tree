@@ -170,9 +170,15 @@ function TreeItem({
     targetData: Record<string | symbol, unknown>,
   ): Promise<void> {
     const sourceId = sourceData.nodeId;
+    const sourceLabel = typeof sourceData.label === "string" ? sourceData.label : sourceId;
     const instruction = extractTreeItemInstruction(targetData);
 
-    if (typeof sourceId !== "string" || !instruction || instruction.type === "instruction-blocked") {
+    if (
+      typeof sourceId !== "string" ||
+      typeof sourceLabel !== "string" ||
+      !instruction ||
+      instruction.type === "instruction-blocked"
+    ) {
       return;
     }
 
@@ -215,8 +221,8 @@ function TreeItem({
     const accepted = await move(request);
     announce(
       accepted
-        ? t("tree.moved", "Moved {{label}}", { label: node.label })
-        : t("tree.move_failed", "Could not move {{label}}", { label: node.label }),
+        ? t("tree.moved", "Moved {{label}}", { label: sourceLabel })
+        : t("tree.move_failed", "Could not move {{label}}", { label: sourceLabel }),
     );
   }
 
@@ -231,7 +237,7 @@ function TreeItem({
       draggable({
         canDrag: () => !moving,
         element,
-        getInitialData: () => ({ nodeId: node.id, type: TREE_DRAG_TYPE }),
+        getInitialData: () => ({ label: node.label, nodeId: node.id, type: TREE_DRAG_TYPE }),
         onDragStart: () => setDragging(true),
         onDrop: () => setDragging(false),
       }),

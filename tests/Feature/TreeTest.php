@@ -88,7 +88,7 @@ it('serializes source children recursively for hasChildren nodes', function (): 
         ->and($root['children'][0]['children'][0])->toMatchArray(['id' => 'grandchild', 'label' => 'Grandchild']);
 });
 
-it('stops fetching source children at the depth cap so cyclic data terminates', function (): void {
+it('serializes source children beyond fifty levels', function (): void {
     $fetches = 0;
 
     $node = wire(
@@ -96,8 +96,11 @@ it('stops fetching source children at the depth cap so cyclic data terminates', 
             roots: fn (): array => [TreeNode::make('n0', 'Root')->hasChildren()],
             children: function (string $parentId) use (&$fetches): array {
                 $fetches++;
+                $level = (int) substr($parentId, 1);
 
-                return [TreeNode::make("n{$fetches}", 'Child')->hasChildren()];
+                return $level < 51
+                    ? [TreeNode::make('n'.($level + 1), 'Child')->hasChildren($level < 50)]
+                    : [];
             },
         )),
     );
@@ -107,11 +110,11 @@ it('stops fetching source children at the depth cap so cyclic data terminates', 
         $boundary = $boundary['children'][0];
     }
 
-    expect($fetches)->toBe(50)
-        ->and($boundary)->toMatchArray(['id' => 'n50', 'hasChildren' => true]);
+    expect($fetches)->toBe(51)
+        ->and($boundary)->toMatchArray(['id' => 'n51']);
 });
 
-it('truncates eager children at the depth cap with a hasChildren marker', function (): void {
+it('serializes inline children beyond fifty levels', function (): void {
     $subtree = TreeNode::make('leaf', 'Leaf');
     foreach (range(51, 0) as $level) {
         $subtree = TreeNode::make("n{$level}", "Level {$level}")->children([$subtree]);
@@ -124,7 +127,19 @@ it('truncates eager children at the depth cap with a hasChildren marker', functi
         $boundary = $boundary['children'][0];
     }
 
-    expect($boundary)->toMatchArray(['id' => 'n50', 'hasChildren' => true]);
+    expect($boundary)->toMatchArray(['id' => 'leaf', 'label' => 'Leaf']);
+});
+
+it('terminates a source cycle without serializing a duplicate node', function (): void {
+    $node = wire(
+        Tree::make()->source(new CallbackTreeSource(
+            roots: fn (): array => [TreeNode::make('root', 'Root')->hasChildren()],
+            children: fn (): array => [TreeNode::make('root', 'Root')->hasChildren()],
+        )),
+    );
+
+    expect($node['props']['nodes'][0])->toMatchArray(['id' => 'root', 'hasChildren' => true])
+        ->and($node['props']['nodes'][0])->not->toHaveKey('children');
 });
 
 it('serves the package translations under the tree namespace', function (): void {

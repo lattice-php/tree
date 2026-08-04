@@ -22,8 +22,6 @@ final class EloquentTreeSource implements TreeSource
 {
     private const string ROOTS = '';
 
-    private const int MAX_PATH_DEPTH = 50;
-
     /** @var Closure(Builder<Model>): mixed|null */
     private ?Closure $scope = null;
 
@@ -150,7 +148,7 @@ final class EloquentTreeSource implements TreeSource
         $visited = [];
         $currentId = $nodeId;
 
-        for ($depth = 0; $depth < self::MAX_PATH_DEPTH; $depth++) {
+        while (true) {
             if (isset($visited[$currentId])) {
                 return null;
             }
@@ -177,8 +175,6 @@ final class EloquentTreeSource implements TreeSource
             $currentId = (string) $parentId;
             $path[] = $currentId;
         }
-
-        return null;
     }
 
     /**

@@ -1,7 +1,7 @@
 import { act, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRegistry, eagerComponent } from "@lattice-php/lattice/core";
-import { draggable, dropTargetForElements } from "@lattice-php/lattice/dnd";
+import { announce, draggable, dropTargetForElements } from "@lattice-php/lattice/dnd";
 import { fakeNode, renderWithRegistry, TestText, treeNode } from "./test-support";
 import TreeComponent, { type TreeNodeData } from "./tree";
 
@@ -40,7 +40,13 @@ function dropTarget(id: string) {
 function drop(sourceId: string, targetId: string, instruction: Record<string, unknown>): void {
   dropTarget(targetId).onDrop?.({
     self: { data: { instruction } },
-    source: { data: { nodeId: sourceId, type: "lattice-tree-node" } },
+    source: {
+      data: {
+        label: screen.getByTestId(`tree-node-${sourceId}`).getAttribute("aria-label"),
+        nodeId: sourceId,
+        type: "lattice-tree-node",
+      },
+    },
   } as never);
 }
 
@@ -76,6 +82,24 @@ describe("tree drag and drop", () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toEqual({ nodeId: "a", parentId: null, position: 1 });
+    await vi.waitFor(() => expect(announce).toHaveBeenCalledWith("Moved Alpha"));
+  });
+
+  it("announces the dragged node when the move is rejected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(JSON.stringify({ effects: [] }), {
+          headers: { "Content-Type": "application/json" },
+          status: 422,
+        }),
+      ),
+    );
+    renderTree([treeNode("a", "Alpha"), treeNode("b", "Beta")]);
+
+    drop("a", "b", { currentLevel: 0, indentPerLevel: 24, type: "reorder-below" });
+
+    await vi.waitFor(() => expect(announce).toHaveBeenCalledWith("Could not move Alpha"));
   });
 
   it("moves a node into another parent", async () => {
