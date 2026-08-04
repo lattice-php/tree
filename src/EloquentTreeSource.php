@@ -6,8 +6,11 @@ namespace Lattice\Tree;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
 
 /**
+ * @template TModel of Model
+ *
  * A {@see TreeSource} backed by an Eloquent adjacency-list hierarchy (a
  * self-referencing parent column).
  *
@@ -15,29 +18,46 @@ use Illuminate\Database\Eloquent\Model;
  * adjacency map — for an adjacency list one scan beats a query per parent,
  * and the eager Tree walk asks for every level anyway.
  */
-final class EloquentTreeSource implements TreeSource
+final class EloquentTreeSource implements TreePathSource, TreeSource
 {
     private const string ROOTS = '';
+
+    private const int MAX_PATH_DEPTH = 50;
 
     /** @var Closure(Builder<Model>): mixed|null */
     private ?Closure $scope = null;
 
     private bool $lazy = false;
 
+    private ?string $orderKey = null;
+
+    private string $orderDirection = 'asc';
+
+    /** @var Closure(TModel, TreeNode): TreeNode|null */
+    private ?Closure $mapper = null;
+
     /** @var array<string, list<TreeNode>>|null */
     private ?array $childrenByParent = null;
 
-    /**
-     * @param  class-string<Model>  $model
-     */
-    private function __construct(
-        private readonly string $model,
-        private string $labelKey = 'name',
-        private string $parentKey = 'parent_id',
-    ) {}
+    /** @var class-string<TModel> */
+    private readonly string $model;
 
     /**
-     * @param  class-string<Model>  $model
+     * @param  class-string<TModel>  $model
+     */
+    private function __construct(
+        string $model,
+        private string $labelKey = 'name',
+        private string $parentKey = 'parent_id',
+    ) {
+        $this->model = $model;
+    }
+
+    /**
+     * @template T of Model
+     *
+     * @param  class-string<T>  $model
+     * @return self<T>
      */
     public static function make(string $model): self
     {
@@ -49,7 +69,7 @@ final class EloquentTreeSource implements TreeSource
      *
      * @param  Closure(Builder<Model>): mixed  $scope
      */
-    public function scope(Closure $scope): self
+    public function scope(Closure $scope): static
     {
         $this->scope = $scope;
         $this->childrenByParent = null;
@@ -57,7 +77,7 @@ final class EloquentTreeSource implements TreeSource
         return $this;
     }
 
-    public function label(string $column): self
+    public function label(string $column): static
     {
         $this->labelKey = $column;
         $this->childrenByParent = null;
@@ -65,9 +85,33 @@ final class EloquentTreeSource implements TreeSource
         return $this;
     }
 
-    public function parent(string $column): self
+    public function parent(string $column): static
     {
         $this->parentKey = $column;
+        $this->childrenByParent = null;
+
+        return $this;
+    }
+
+    public function orderBy(string $column, string $direction = 'asc'): static
+    {
+        $direction = strtolower($direction);
+
+        if (! in_array($direction, ['asc', 'desc'], true)) {
+            throw new InvalidArgumentException('Tree ordering direction must be "asc" or "desc".');
+        }
+
+        $this->orderKey = $column;
+        $this->orderDirection = $direction;
+        $this->childrenByParent = null;
+
+        return $this;
+    }
+
+    /** @param Closure(TModel, TreeNode): TreeNode $mapper */
+    public function map(Closure $mapper): static
+    {
+        $this->mapper = $mapper;
         $this->childrenByParent = null;
 
         return $this;
@@ -79,7 +123,7 @@ final class EloquentTreeSource implements TreeSource
      * single parent's children; the full scan stays optimal for the eager
      * walk, which visits every level anyway.
      */
-    public function lazy(bool $lazy = true): self
+    public function lazy(bool $lazy = true): static
     {
         $this->lazy = $lazy;
 
@@ -98,6 +142,43 @@ final class EloquentTreeSource implements TreeSource
         return $this->lazy
             ? $this->level($parentId)
             : $this->childrenByParent()[$parentId] ?? [];
+    }
+
+    public function path(string $nodeId): ?array
+    {
+        $path = [];
+        $visited = [];
+        $currentId = $nodeId;
+
+        for ($depth = 0; $depth < self::MAX_PATH_DEPTH; $depth++) {
+            if (isset($visited[$currentId])) {
+                return null;
+            }
+
+            $visited[$currentId] = true;
+            $query = $this->query();
+            $model = $query->getModel();
+            $table = $model->getTable();
+            $node = $query->whereKey($currentId)->first([
+                $model->getQualifiedKeyName(),
+                "{$table}.{$this->parentKey}",
+            ]);
+
+            if ($node === null) {
+                return null;
+            }
+
+            $parentId = $node->getAttribute($this->parentKey);
+
+            if ($parentId === null) {
+                return array_reverse($path);
+            }
+
+            $currentId = (string) $parentId;
+            $path[] = $currentId;
+        }
+
+        return null;
     }
 
     /**
@@ -125,26 +206,51 @@ final class EloquentTreeSource implements TreeSource
             ->whereColumn("{$alias}.{$this->parentKey}", $model->getQualifiedKeyName())
             ->limit(1);
 
-        $rows = $query
+        $rows = $this->ordered($query
             ->select("{$table}.*")
-            ->addSelect(['lattice_tree_has_children' => $probe])
-            ->orderBy($this->labelKey)
+            ->addSelect(['lattice_tree_has_children' => $probe]))
             ->get();
 
         return array_values($rows->map(
-            fn (Model $row): TreeNode => TreeNode::make(
-                (string) $row->getKey(),
-                (string) $row->getAttribute($this->labelKey),
-            )->hasChildren((bool) $row->getAttribute('lattice_tree_has_children')),
+            fn ($row): TreeNode => $this->node(
+                $row,
+                (bool) $row->getAttribute('lattice_tree_has_children'),
+            ),
         )->all());
     }
 
     /**
-     * @return Builder<Model>
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    private function ordered(Builder $query): Builder
+    {
+        if ($this->orderKey !== null) {
+            $query->orderBy($this->orderKey, $this->orderDirection);
+        }
+
+        $query->orderBy($this->labelKey)->orderBy($query->getModel()->getQualifiedKeyName());
+
+        return $query;
+    }
+
+    /** @param TModel $model */
+    private function node(Model $model, bool $hasChildren): TreeNode
+    {
+        $node = TreeNode::make(
+            (string) $model->getKey(),
+            (string) $model->getAttribute($this->labelKey),
+        )->hasChildren($hasChildren);
+
+        return $this->mapper instanceof Closure ? ($this->mapper)($model, $node) : $node;
+    }
+
+    /**
+     * @return Builder<TModel>
      */
     private function query(): Builder
     {
-        $builder = $this->model::query();
+        $builder = (new $this->model)->newQuery();
 
         if ($this->scope instanceof Closure) {
             $scoped = ($this->scope)($builder);
@@ -166,10 +272,10 @@ final class EloquentTreeSource implements TreeSource
             return $this->childrenByParent;
         }
 
-        /** @var array<string, list<Model>> $modelsByParent */
+        /** @var array<string, list<TModel>> $modelsByParent */
         $modelsByParent = [];
 
-        foreach ($this->query()->orderBy($this->labelKey)->get() as $model) {
+        foreach ($this->ordered($this->query())->get() as $model) {
             $parent = $model->getAttribute($this->parentKey);
             $modelsByParent[$parent === null ? self::ROOTS : (string) $parent][] = $model;
         }
@@ -178,10 +284,10 @@ final class EloquentTreeSource implements TreeSource
 
         foreach ($modelsByParent as $parent => $models) {
             $this->childrenByParent[$parent] = array_map(
-                fn (Model $model): TreeNode => TreeNode::make(
-                    (string) $model->getKey(),
-                    (string) $model->getAttribute($this->labelKey),
-                )->hasChildren(isset($modelsByParent[(string) $model->getKey()])),
+                fn ($model): TreeNode => $this->node(
+                    $model,
+                    isset($modelsByParent[(string) $model->getKey()]),
+                ),
                 $models,
             );
         }

@@ -111,3 +111,78 @@ it('applies the scope to lazy level queries and the has-children probe', functio
         ->toBe([['Clothing', true], ['Electronics', false]])
         ->and(iterator_to_array($source->children((string) $electronics->getKey())))->toBe([]);
 });
+
+it('orders eager roots and siblings by a custom column with deterministic tie breakers', function (): void {
+    $secondAlpha = Category::factory()->create(['name' => 'Alpha', 'sort_order' => 2]);
+    $first = Category::factory()->create(['name' => 'Zulu', 'sort_order' => 1]);
+    $firstAlpha = Category::factory()->create(['name' => 'Alpha', 'sort_order' => 2]);
+    $parent = Category::factory()->create(['name' => 'Parent', 'sort_order' => 3]);
+    $childSecond = Category::factory()->childOf($parent)->create(['name' => 'Beta', 'sort_order' => 2]);
+    $childFirst = Category::factory()->childOf($parent)->create(['name' => 'Zulu', 'sort_order' => 1]);
+
+    $source = EloquentTreeSource::make(Category::class)->orderBy('sort_order');
+
+    expect(array_map(fn (TreeNode $node): string => $node->id, $source->roots()))->toBe([
+        (string) $first->getKey(),
+        (string) $secondAlpha->getKey(),
+        (string) $firstAlpha->getKey(),
+        (string) $parent->getKey(),
+    ])->and(array_map(fn (TreeNode $node): string => $node->id, $source->children((string) $parent->getKey())))->toBe([
+        (string) $childFirst->getKey(),
+        (string) $childSecond->getKey(),
+    ]);
+});
+
+it('applies custom ordering to lazy roots and children', function (): void {
+    $parent = Category::factory()->create(['name' => 'Parent', 'sort_order' => 2]);
+    $firstRoot = Category::factory()->create(['name' => 'Later alphabetically', 'sort_order' => 1]);
+    $secondChild = Category::factory()->childOf($parent)->create(['name' => 'Alpha', 'sort_order' => 2]);
+    $firstChild = Category::factory()->childOf($parent)->create(['name' => 'Zulu', 'sort_order' => 1]);
+
+    $source = EloquentTreeSource::make(Category::class)->orderBy('sort_order')->lazy();
+
+    expect(array_map(fn (TreeNode $node): string => $node->id, iterator_to_array($source->roots())))->toBe([
+        (string) $firstRoot->getKey(),
+        (string) $parent->getKey(),
+    ])->and(array_map(fn (TreeNode $node): string => $node->id, iterator_to_array($source->children((string) $parent->getKey()))))->toBe([
+        (string) $firstChild->getKey(),
+        (string) $secondChild->getKey(),
+    ]);
+});
+
+it('maps eager and lazy models through the same node callback', function (): void {
+    $parent = Category::factory()->create(['name' => 'Parent', 'is_active' => false]);
+    $child = Category::factory()->childOf($parent)->create(['name' => 'Child']);
+    $map = fn (Category $model, TreeNode $node): TreeNode => $node
+        ->badge((string) $model->sort_order)
+        ->disabled(! $model->is_active)
+        ->href('/categories/'.$model->getKey());
+
+    $eager = EloquentTreeSource::make(Category::class)->map($map);
+    $lazy = EloquentTreeSource::make(Category::class)->map($map)->lazy();
+
+    expect($eager->roots()[0])
+        ->disabled->toBeTrue()
+        ->badge->toBe('0')
+        ->href->toBe('/categories/'.$parent->getKey())
+        ->hasChildren->toBeTrue()
+        ->and(iterator_to_array($lazy->children((string) $parent->getKey()))[0])
+        ->href->toBe('/categories/'.$child->getKey());
+});
+
+it('resolves a scoped root-to-parent path for a node', function (): void {
+    $root = Category::factory()->create(['name' => 'Root']);
+    $parent = Category::factory()->childOf($root)->create(['name' => 'Parent']);
+    $target = Category::factory()->childOf($parent)->create(['name' => 'Target']);
+    $hidden = Category::factory()->childOf($root)->create(['name' => 'Hidden', 'is_active' => false]);
+
+    $source = EloquentTreeSource::make(Category::class)
+        ->scope(fn ($query) => $query->where('is_active', true));
+
+    expect($source->path((string) $target->getKey()))->toBe([
+        (string) $root->getKey(),
+        (string) $parent->getKey(),
+    ])
+        ->and($source->path((string) $root->getKey()))->toBe([])
+        ->and($source->path((string) $hidden->getKey()))->toBeNull();
+});
