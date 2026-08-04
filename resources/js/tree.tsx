@@ -1,8 +1,8 @@
 import { router } from "@inertiajs/react";
 import { useEffect, useRef } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { cn, nodeIdentity, Renderer } from "@lattice-php/lattice/core";
-import type { RendererComponent, Schema } from "@lattice-php/lattice/core";
+import type { Node, RendererComponent, Schema } from "@lattice-php/lattice/core";
 import { Icon } from "@lattice-php/lattice/icons";
 import { useT } from "@lattice-php/lattice/i18n";
 import { ROOTS_KEY, TreeContext, useTreeContext, useTreeState } from "./tree-context";
@@ -26,12 +26,16 @@ export type TreeNodeData = {
 
 export type TreeWireProps = {
   activeId: string | null;
+  activePath?: string[] | null;
   defaultExpanded: string[];
   rememberState: boolean;
   nodes: TreeNodeData[];
   ref: string | null;
   endpoint: string | null;
   lazy: boolean;
+  moveAction: Node<"action"> | null;
+  revision: string | number | null;
+  selectAction: Node<"action"> | null;
 };
 
 declare module "@lattice-php/lattice" {
@@ -71,6 +75,7 @@ function TreeItem({
     canLoad,
     childrenFor,
     expanded,
+    focus,
     focusedId,
     isLoading,
     loadChildren,
@@ -87,7 +92,7 @@ function TreeItem({
   const isActive = activeId === node.id;
   const isFocused = focusedId === node.id;
   const isDisabled = node.disabled === true;
-  const children = node.children ?? childrenFor(node.id);
+  const children = childrenFor(node.id);
   const expandable = isExpandable(node, children, canLoad);
   const loading = isLoading(node.id);
   const bodyRef = useRef<HTMLSpanElement>(null);
@@ -95,8 +100,8 @@ function TreeItem({
   // Fetching is an effect of "expanded but unloaded", so chevron clicks,
   // ArrowRight, defaultExpanded, and a rememberState restore all share it.
   useEffect(() => {
-    if (isExpanded && node.hasChildren === true && !node.children && !children) {
-      loadChildren(node.id);
+    if (isExpanded && node.hasChildren === true && !children) {
+      void loadChildren(node.id);
     }
   }, [isExpanded, node, children, loadChildren]);
 
@@ -182,6 +187,22 @@ function TreeItem({
     }
   }
 
+  function onClick(event: MouseEvent<HTMLLIElement>): void {
+    const target = event.target;
+
+    if (
+      isDisabled ||
+      !(target instanceof Element) ||
+      target.closest('[role="treeitem"]') !== event.currentTarget ||
+      target.closest('button, a[href], [role="button"]')
+    ) {
+      return;
+    }
+
+    focus(node.id);
+    activate(node.id);
+  }
+
   return (
     <li
       aria-disabled={isDisabled}
@@ -192,6 +213,7 @@ function TreeItem({
       aria-selected={isActive}
       aria-setsize={siblingCount}
       data-test={`tree-node-${node.id}`}
+      onClick={onClick}
       onKeyDown={onKeyDown}
       ref={ref}
       role="treeitem"
@@ -256,15 +278,18 @@ const TreeComponent: RendererComponent<"tree"> = ({ node }) => {
   const identity = nodeIdentity(node);
   const value = useTreeState({
     activeId: node.props.activeId,
+    activePath: node.props.activePath,
     defaultExpanded: node.props.defaultExpanded,
     endpoint: node.props.endpoint ?? null,
     componentRef: node.props.ref ?? null,
     lazy: node.props.lazy === true,
     nodes: node.props.nodes,
     rememberState: node.props.rememberState,
+    revision: node.props.revision ?? null,
+    selectAction: node.props.selectAction ?? null,
     storageKey: `lattice:tree:${identity ?? "default"}`,
   });
-  const roots = node.props.nodes.length > 0 ? node.props.nodes : (value.childrenFor(ROOTS_KEY) ?? []);
+  const roots = value.childrenFor(ROOTS_KEY) ?? [];
 
   return (
     <TreeContext.Provider value={value}>

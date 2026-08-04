@@ -34,10 +34,12 @@ export function renderWithRegistry(
   registry: Registry,
   options?: RenderOptions,
 ): RenderResult {
-  return render(
-    <RegistryContext.Provider value={registry}>{ui}</RegistryContext.Provider>,
-    options,
-  );
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <RegistryContext.Provider value={registry}>{children}</RegistryContext.Provider>
+    ),
+    ...options,
+  });
 }
 
 /**

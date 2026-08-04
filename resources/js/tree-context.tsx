@@ -1,9 +1,59 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { apiJson, usePersistentState } from "@lattice-php/lattice/core";
+import { runAction } from "@lattice-php/lattice/action";
+import { apiFetch, apiJson, usePersistentState } from "@lattice-php/lattice/core";
+import type { Node } from "@lattice-php/lattice/core";
+import { useEffectDispatcher } from "@lattice-php/lattice/effects/use-effect-dispatcher";
 import type { TreeNodeData } from "./tree";
 
 export const ROOTS_KEY = "";
+
+type TreeGraph = {
+  children: Map<string, string[]>;
+  loaded: Set<string>;
+  nodes: Map<string, TreeNodeData>;
+};
+
+function addChildren(graph: TreeGraph, parentId: string, children: TreeNodeData[]): void {
+  graph.children.set(
+    parentId,
+    children.map((child) => child.id),
+  );
+  graph.loaded.add(parentId);
+
+  for (const child of children) {
+    const { children: nested, ...node } = child;
+    graph.nodes.set(child.id, node);
+
+    if (nested) {
+      addChildren(graph, child.id, nested);
+    }
+  }
+}
+
+function createGraph(nodes: TreeNodeData[], rootsLoaded: boolean): TreeGraph {
+  const graph: TreeGraph = { children: new Map(), loaded: new Set(), nodes: new Map() };
+
+  addChildren(graph, ROOTS_KEY, nodes);
+
+  if (!rootsLoaded) {
+    graph.loaded.delete(ROOTS_KEY);
+  }
+
+  return graph;
+}
+
+function mergeChildren(graph: TreeGraph, parentId: string, children: TreeNodeData[]): TreeGraph {
+  const next: TreeGraph = {
+    children: new Map(graph.children),
+    loaded: new Set(graph.loaded),
+    nodes: new Map(graph.nodes),
+  };
+
+  addChildren(next, parentId, children);
+
+  return next;
+}
 
 export type TreeItemRegistration = {
   id: string;
@@ -25,7 +75,7 @@ export type TreeContextValue = {
   focus: (id: string) => void;
   focusedId: string | null;
   isLoading: (id: string) => boolean;
-  loadChildren: (id: string) => void;
+  loadChildren: (id: string) => Promise<void>;
   moveFocus: (fromId: string, direction: TreeFocusDirection) => void;
   register: (entry: TreeItemRegistration) => void;
   toggle: (id: string) => void;
@@ -42,7 +92,7 @@ const defaultTreeContext: TreeContextValue = {
   focus: () => {},
   focusedId: null,
   isLoading: () => false,
-  loadChildren: () => {},
+  loadChildren: async () => {},
   moveFocus: () => {},
   register: () => {},
   toggle: () => {},
@@ -70,25 +120,55 @@ function visibleOrder(registry: Map<string, TreeItemRegistration>): TreeItemRegi
   return [...registry.values()].sort((a, b) => a.orderPath.localeCompare(b.orderPath));
 }
 
+async function runTreeAction(
+  action: Node<"action">,
+  payload: Record<string, unknown>,
+  dispatch: ReturnType<typeof useEffectDispatcher>,
+): Promise<boolean> {
+  const endpoint = action.props.endpoint;
+
+  if (!endpoint) {
+    return true;
+  }
+
+  return runAction(
+    () =>
+      apiFetch(endpoint, {
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        method: action.props.method ?? "post",
+        ref: action.props.ref ?? "",
+        throwOnError: false,
+      }),
+    dispatch,
+  );
+}
+
 const TYPEAHEAD_IDLE_MS = 800;
 
 export function useTreeState({
-  activeId: initialActiveId,
+  activeId: controlledActiveId,
+  activePath,
   defaultExpanded,
   endpoint,
   componentRef,
   lazy,
   nodes,
   rememberState,
+  revision,
+  selectAction,
   storageKey,
 }: {
   activeId: string | null;
+  activePath?: string[] | null;
   defaultExpanded: string[];
   endpoint: string | null;
   componentRef: string | null;
   lazy: boolean;
-  nodes: Array<{ id: string }>;
+  nodes: TreeNodeData[];
   rememberState: boolean;
+  revision: string | number | null;
+  selectAction: Node<"action"> | null;
   storageKey: string;
 }): TreeContextValue {
   const [expanded, setExpanded] = usePersistentState<Set<string>>(
@@ -100,16 +180,42 @@ export function useTreeState({
       serialize: (value) => JSON.stringify([...value]),
     },
   );
-  const [activeId, setActiveId] = useState<string | null>(initialActiveId);
+  const [activeId, setActiveId] = useState<string | null>(controlledActiveId);
   const [focusedId, setFocusedId] = useState<string | null>(() => nodes[0]?.id ?? null);
+  const [graph, setGraph] = useState(() => createGraph(nodes, !(lazy && nodes.length === 0)));
+  const [loading, setLoading] = useState<Set<string>>(new Set());
   const registryRef = useRef<Map<string, TreeItemRegistration>>(new Map());
   const typeAheadRef = useRef<{ text: string; timestamp: number }>({ text: "", timestamp: 0 });
-  const [loaded, setLoaded] = useState<Map<string, TreeNodeData[]>>(new Map());
-  const [loading, setLoading] = useState<Set<string>>(new Set());
-  const inFlightRef = useRef<Set<string>>(new Set());
-  const loadedRef = useRef(loaded);
-  loadedRef.current = loaded;
+  const inFlightRef = useRef<Map<string, Promise<void>>>(new Map());
+  const graphRef = useRef(graph);
+  const generationRef = useRef(0);
+  const pendingFocusRef = useRef<string | null>(null);
+  const selectionRef = useRef(0);
+  const activeIdRef = useRef(activeId);
+  const wireRef = useRef({ nodes, revision });
+  const dispatch = useEffectDispatcher();
+  graphRef.current = graph;
+  activeIdRef.current = activeId;
   const canLoad = endpoint !== null && endpoint !== "";
+
+  useEffect(() => {
+    selectionRef.current += 1;
+    setActiveId(controlledActiveId);
+  }, [controlledActiveId]);
+
+  useEffect(() => {
+    if (wireRef.current.nodes === nodes && wireRef.current.revision === revision) {
+      return;
+    }
+
+    wireRef.current = { nodes, revision };
+    generationRef.current += 1;
+    inFlightRef.current.clear();
+    const next = createGraph(nodes, !(lazy && nodes.length === 0));
+    graphRef.current = next;
+    setGraph(next);
+    setLoading(new Set());
+  }, [lazy, nodes, revision]);
 
   const toggle = useCallback(
     (id: string) => {
@@ -128,16 +234,46 @@ export function useTreeState({
     [setExpanded],
   );
 
-  const activate = useCallback((id: string) => setActiveId(id), []);
+  const activate = useCallback(
+    (id: string) => {
+      const previous = activeIdRef.current;
+      const selection = ++selectionRef.current;
+      activeIdRef.current = id;
+      setActiveId(id);
+
+      if (!selectAction) {
+        return;
+      }
+
+      void runTreeAction(selectAction, { nodeId: id }, dispatch).then((accepted) => {
+        if (!accepted && selectionRef.current === selection) {
+          activeIdRef.current = previous;
+          setActiveId(previous);
+        }
+      });
+    },
+    [dispatch, selectAction],
+  );
 
   const focus = useCallback((id: string) => {
     setFocusedId(id);
     const entry = [...registryRef.current.values()].find((candidate) => candidate.id === id);
-    entry?.ref.current?.focus();
+
+    if (entry?.ref.current) {
+      pendingFocusRef.current = null;
+      entry.ref.current.focus();
+    } else {
+      pendingFocusRef.current = id;
+    }
   }, []);
 
   const register = useCallback((entry: TreeItemRegistration) => {
     registryRef.current.set(entry.path, entry);
+
+    if (pendingFocusRef.current === entry.id) {
+      pendingFocusRef.current = null;
+      entry.ref.current?.focus();
+    }
   }, []);
 
   const unregister = useCallback((path: string) => {
@@ -215,22 +351,41 @@ export function useTreeState({
   );
 
   const loadChildren = useCallback(
-    (id: string) => {
-      if (!canLoad || inFlightRef.current.has(id) || loadedRef.current.has(id)) {
-        return;
+    (id: string): Promise<void> => {
+      if (!canLoad || graphRef.current.loaded.has(id)) {
+        return Promise.resolve();
       }
 
-      inFlightRef.current.add(id);
+      const currentRequest = inFlightRef.current.get(id);
+
+      if (currentRequest) {
+        return currentRequest;
+      }
+
+      const generation = generationRef.current;
       setLoading((current) => new Set(current).add(id));
 
-      apiJson<{ nodes: TreeNodeData[] }>(`${endpoint}?parent=${encodeURIComponent(id)}`, {
-        ref: componentRef ?? "",
-      })
+      const request = apiJson<{ nodes: TreeNodeData[] }>(
+        `${endpoint}?parent=${encodeURIComponent(id)}`,
+        { ref: componentRef ?? "" },
+      )
         .then(({ nodes: fetched }) => {
-          setLoaded((current) => new Map(current).set(id, fetched));
+          if (generation !== generationRef.current) {
+            return;
+          }
+
+          setGraph((current) => {
+            const next = mergeChildren(current, id, fetched);
+            graphRef.current = next;
+
+            return next;
+          });
         })
         .catch(() => {
-          // Collapse so the next expand retries; nothing is cached for the id.
+          if (generation !== generationRef.current) {
+            return;
+          }
+
           setExpanded((current) => {
             const next = new Set(current);
             next.delete(id);
@@ -239,6 +394,10 @@ export function useTreeState({
           });
         })
         .finally(() => {
+          if (generation !== generationRef.current) {
+            return;
+          }
+
           inFlightRef.current.delete(id);
           setLoading((current) => {
             const next = new Set(current);
@@ -247,29 +406,60 @@ export function useTreeState({
             return next;
           });
         });
+
+      inFlightRef.current.set(id, request);
+
+      return request;
     },
     [canLoad, componentRef, endpoint, setExpanded],
   );
 
-  const childrenFor = useCallback((id: string) => loaded.get(id), [loaded]);
+  const childrenFor = useCallback(
+    (id: string) => graph.children.get(id)?.map((childId) => graph.nodes.get(childId)!),
+    [graph],
+  );
 
   const isLoading = useCallback((id: string) => loading.has(id), [loading]);
 
-  const hasWireNodes = nodes.length > 0;
+  useEffect(() => {
+    if (lazy && !graph.loaded.has(ROOTS_KEY)) {
+      void loadChildren(ROOTS_KEY);
+    }
+  }, [graph.loaded, lazy, loadChildren]);
+
+  const firstRootId = graph.children.get(ROOTS_KEY)?.[0];
 
   useEffect(() => {
-    if (lazy && !hasWireNodes) {
-      loadChildren(ROOTS_KEY);
+    if (focusedId === null && firstRootId !== undefined) {
+      setFocusedId(firstRootId);
     }
-  }, [lazy, hasWireNodes, loadChildren]);
-
-  const firstFetchedRootId = loaded.get(ROOTS_KEY)?.[0]?.id;
+  }, [focusedId, firstRootId]);
 
   useEffect(() => {
-    if (focusedId === null && firstFetchedRootId !== undefined) {
-      setFocusedId(firstFetchedRootId);
+    if (!controlledActiveId || !activePath) {
+      return;
     }
-  }, [focusedId, firstFetchedRootId]);
+
+    let cancelled = false;
+
+    void (async () => {
+      setExpanded((current) => new Set([...current, ...activePath]));
+
+      for (const ancestorId of activePath) {
+        await loadChildren(ancestorId);
+
+        if (cancelled) {
+          return;
+        }
+      }
+
+      focus(controlledActiveId);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePath, controlledActiveId, focus, loadChildren, setExpanded]);
 
   return useMemo(
     () => ({
