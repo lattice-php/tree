@@ -21,8 +21,13 @@
   serialize only `$eagerDepth` levels; deeper levels are fetched from the package-registered
   `GET lattice/trees/{tree}` endpoint, verified via core's sealed-reference machinery (`IsInteractive`,
   `InteractsWithComponents`, the container-bound `SignsComponentReferences`). Inline trees cannot go lazy — no
-  registry key, nothing to seal — and `->lazy()` on them throws. Drag-and-drop reordering is the remaining roadmap
-  item.
+  registry key, nothing to seal — and `->lazy()` on them throws.
+- **Interaction actions.** `->selectAction()` posts `{ nodeId }`; `->moveAction()` enables pointer and keyboard moving
+  and posts `{ nodeId, parentId, position }`. Both optimistically update and roll back rejected requests. Persistence
+  and authoritative validation stay in the consuming application.
+- **Lazy reveal and invalidation.** `->activeId()` asks a `TreePathSource` for the active node's ancestor IDs so the
+  renderer can load, expand, and focus it. `EloquentTreeSource` resolves paths automatically. `->revision()` resets
+  lazy child caches while preserving expansion and focus state.
 - **Built on core's public seams, not forks.** Discovery uses `DiscoveryKinds::register('trees', AsTree::class)`;
   the registry extends `Lattice\Lattice\Core\DefinitionRegistry`; the route registers in `TreeServiceProvider`
   under core's group conventions (`config('lattice.trees.{middleware,endpoint}')`) because core's routes file has

@@ -54,6 +54,29 @@ it('fetches on ArrowRight and moves focus into the loaded child on the second pr
     $page->assertNoJavaScriptErrors();
 });
 
+it('reveals an active node from its URL id through unloaded ancestors', function (): void {
+    seedLazyCategories();
+    $electronicsId = categoryId('Electronics');
+    $laptopsId = categoryId('Laptops');
+    $targetId = categoryId('Ultrabooks');
+    $targetNode = '[data-test="tree-node-'.$targetId.'"]';
+
+    $page = visit('/tree-lazy?category='.$targetId);
+
+    assertPresentEventually($page, $targetNode);
+
+    retryUntil(function () use ($page, $targetNode): void {
+        $page
+            ->assertAriaAttribute($targetNode, 'selected', 'true')
+            ->assertAttribute($targetNode, 'tabindex', '0');
+    });
+
+    $page
+        ->assertAriaAttribute('[data-test="tree-node-'.$electronicsId.'"]', 'expanded', 'true')
+        ->assertAriaAttribute('[data-test="tree-node-'.$laptopsId.'"]', 'expanded', 'true')
+        ->assertNoJavaScriptErrors();
+});
+
 it('loads defaultExpanded nodes beyond the eager depth on mount', function (): void {
     seedLazyCategories();
 

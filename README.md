@@ -3,10 +3,8 @@
 Tree view component for [Lattice](https://github.com/lattice-php/lattice) — hierarchy rendering
 from inline nodes, callbacks, or Eloquent adjacency-list sources, with full keyboard navigation
 (roving tabindex, typeahead), per-node icons, badges, links, and actions, and lazy child loading
-over a signed endpoint.
-
-Extracted from the Lattice core package to grow on its own; drag & drop reordering is next on
-the roadmap.
+over a signed endpoint. Registered Lattice actions can handle selection and optimistic drag-and-drop
+moving without coupling the package to application persistence.
 
 ## Installation
 
@@ -67,11 +65,40 @@ use Lattice\Tree\EloquentTreeSource;
 
 Tree::make('categories')->source(
     EloquentTreeSource::make(Category::class)
-        ->scope(fn ($query) => $query->where('active', true)),
+        ->orderBy('sort_order')
+        ->map(fn (Category $category, TreeNode $node) => $node
+            ->badge((string) $category->products_count)
+            ->disabled(! $category->is_active)
+            ->href(route('categories.show', $category))),
 );
 ```
 
+`->orderBy()` orders roots and every sibling group by that column, followed by the label and ID
+for deterministic ties. Without it, label and ID remain the default ordering. The single `->map()`
+callback receives the model and its base `TreeNode`, and applies equally to eager and lazy results.
+
 Any other backing store implements the two-method `Lattice\Tree\TreeSource` contract.
+
+## Selection and moving
+
+Attach registered Lattice actions to receive generic interaction payloads:
+
+```php
+Tree::use(CategoryTree::class)
+    ->activeId(request()->string('category')->toString() ?: null)
+    ->selectAction(SelectCategory::class) // { nodeId }
+    ->moveAction(MoveCategory::class);    // { nodeId, parentId, position }
+```
+
+Clicking a row selects it; expander, link, and node-action clicks keep their own behavior. The active
+row updates optimistically and follows later `activeId` props, so a URL parameter can remain the
+authoritative selection.
+
+`moveAction()` enables pointer moving between parents and the root. The zero-based `position` is the
+node's final sibling position. The client prevents disabled and cyclic drops, rolls back rejected
+requests, and offers `Ctrl+Shift+Arrow` keys: Up/Down reorder, Right indents, and Left outdents.
+The consuming application owns persistence and authoritative validation; the package never writes a
+`sort_order` column itself.
 
 ## Lazy loading
 
@@ -99,6 +126,11 @@ Tree::use(CategoryTree::class)->lazy();     // roots eager, deeper levels fetche
 Tree::use(CategoryTree::class)->lazy(2);    // two levels eager
 Tree::use(CategoryTree::class)->lazy(0);    // bare skeleton — even the roots are fetched
 ```
+
+Passing `->activeId($id)` to an Eloquent-backed tree resolves that node's ancestors, then loads,
+expands, and focuses the node through lazy levels. Custom sources can opt into the same behavior by
+implementing `TreePathSource`. After a mutation, change `->revision($key)` to discard cached lazy
+children and refetch expanded branches while preserving active and focus state.
 
 The definition is discovered like any Lattice definition (`#[AsTree]` + Lattice's discovery
 paths), and the serialized tree carries a sealed reference — the same signing machinery Lattice

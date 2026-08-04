@@ -34,6 +34,20 @@ it('expands a collapsed subtree and reveals its children when the chevron is cli
         ->assertNoJavaScriptErrors();
 });
 
+it('selects from the row without selecting from the expander', function (): void {
+    $page = visit('/tree')
+        ->assertAriaAttribute('[data-test="tree-node-electronics-phones"]', 'selected', 'true')
+        ->click('[data-test="tree-node-clothing-toggle"]')
+        ->assertAriaAttribute('[data-test="tree-node-electronics-phones"]', 'selected', 'true')
+        ->click('[data-test="tree-node-clothing"] > div');
+
+    retryUntil(function () use ($page): void {
+        $page->assertAriaAttribute('[data-test="tree-node-clothing"]', 'selected', 'true');
+    });
+
+    $page->assertNoJavaScriptErrors();
+});
+
 it('moves focus with ArrowDown and expands a node with ArrowRight', function (): void {
     $page = visit('/tree')
         ->keys('[data-test="tree-node-electronics"]', ['ArrowDown']);

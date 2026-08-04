@@ -8,10 +8,16 @@ import TreeComponent, { type TreeNodeData } from "./tree";
 const TestAction: RendererComponent = ({ node }) => (
   <button type="button">{String(node.props?.label ?? "")}</button>
 );
+const TestLink: RendererComponent = ({ node }) => (
+  <a href={String(node.props?.href ?? "#")} onClick={(event) => event.preventDefault()}>
+    {String(node.props?.label ?? "")}
+  </a>
+);
 
 const registry = createRegistry({
   components: {
     "test.action": eagerComponent(TestAction),
+    "test.link": eagerComponent(TestLink),
     "test.text": eagerComponent(TestText),
     tree: eagerComponent(TreeComponent),
   },
@@ -88,7 +94,7 @@ describe("Tree component", () => {
     expect(screen.getByTestId("tree-node-3")).toHaveAttribute("aria-selected", "true");
   });
 
-  it("selects a node from its row without selecting from the expander or an action", () => {
+  it("selects a node from its row without selecting from the expander, link, or action", () => {
     const actionNodes: TreeNodeData[] = [
       treeNode("1", "Parent", {
         children: [
@@ -97,6 +103,9 @@ describe("Tree component", () => {
               { props: { text: "Action node" }, type: "test.text" },
               { props: { label: "Delete" }, type: "test.action" },
             ],
+          }),
+          treeNode("3", "Link node", {
+            schema: [{ props: { href: "/categories/3", label: "Open" }, type: "test.link" }],
           }),
         ],
       }),
@@ -109,6 +118,9 @@ describe("Tree component", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(screen.getByTestId("tree-node-2")).toHaveAttribute("aria-selected", "false");
+
+    fireEvent.click(screen.getByRole("link", { name: "Open" }));
+    expect(screen.getByTestId("tree-node-3")).toHaveAttribute("aria-selected", "false");
 
     fireEvent.click(screen.getByTestId("tree-node-2"));
     expect(screen.getByTestId("tree-node-2")).toHaveAttribute("aria-selected", "true");
