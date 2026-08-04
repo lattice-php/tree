@@ -18,7 +18,7 @@ use InvalidArgumentException;
  * adjacency map — for an adjacency list one scan beats a query per parent,
  * and the eager Tree walk asks for every level anyway.
  */
-final class EloquentTreeSource implements TreePathSource, TreeSource
+final class EloquentTreeSource implements TreeSource
 {
     private const string ROOTS = '';
 

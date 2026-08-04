@@ -25,7 +25,7 @@
 - **Interaction actions.** `->selectAction()` posts `{ nodeId }`; `->moveAction()` enables pointer and keyboard moving
   and posts `{ nodeId, parentId, position }`. Both optimistically update and roll back rejected requests. Persistence
   and authoritative validation stay in the consuming application.
-- **Lazy reveal and invalidation.** `->activeId()` asks a `TreePathSource` for the active node's ancestor IDs so the
+- **Lazy reveal and invalidation.** `->activeId()` asks its `TreeSource` for the active node's ancestor IDs so the
   renderer can load, expand, and focus it. `EloquentTreeSource` resolves paths automatically. `->revision()` resets
   lazy child caches while preserving expansion and focus state.
 - **Built on core's public seams, not forks.** Discovery uses `DiscoveryKinds::register('trees', AsTree::class)`;

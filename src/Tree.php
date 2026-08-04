@@ -171,7 +171,7 @@ class Tree extends Component implements InteractiveComponent
     #[SerializationHook(priority: 300)]
     protected function serialiseActivePath(array $data): array
     {
-        if ($this->activeId !== null && $this->source instanceof TreePathSource) {
+        if ($this->activeId !== null && $this->source instanceof TreeSource) {
             $data['props']['activePath'] = $this->source->path($this->activeId);
         }
 

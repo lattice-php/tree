@@ -15,4 +15,7 @@ interface TreeSource
 
     /** @return iterable<int, TreeNode> */
     public function children(string $parentId): iterable;
+
+    /** @return list<string>|null */
+    public function path(string $nodeId): ?array;
 }

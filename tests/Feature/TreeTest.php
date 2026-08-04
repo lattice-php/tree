@@ -4,7 +4,6 @@ declare(strict_types=1);
 use Lattice\Tree\CallbackTreeSource;
 use Lattice\Tree\Tree;
 use Lattice\Tree\TreeNode;
-use Lattice\Tree\TreePathSource;
 use Lattice\Tree\TreeSource;
 use Workbench\App\Actions\ShowTreeNodeInfoAction;
 
@@ -47,7 +46,7 @@ it('serializes revision and registered interaction actions', function (): void {
 });
 
 it('derives the active node ancestor path from capable sources', function (): void {
-    $source = new class implements TreePathSource, TreeSource
+    $source = new class implements TreeSource
     {
         public function roots(): iterable
         {

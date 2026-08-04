@@ -128,9 +128,9 @@ Tree::use(CategoryTree::class)->lazy(0);    // bare skeleton — even the roots 
 ```
 
 Passing `->activeId($id)` to an Eloquent-backed tree resolves that node's ancestors, then loads,
-expands, and focuses the node through lazy levels. Custom sources can opt into the same behavior by
-implementing `TreePathSource`. After a mutation, change `->revision($key)` to discard cached lazy
-children and refetch expanded branches while preserving active and focus state.
+expands, and focuses the node through lazy levels. Custom `TreeSource` implementations return the
+ancestor IDs from `path()`. After a mutation, change `->revision($key)` to discard cached lazy children
+and refetch expanded branches while preserving active and focus state.
 
 The definition is discovered like any Lattice definition (`#[AsTree]` + Lattice's discovery
 paths), and the serialized tree carries a sealed reference — the same signing machinery Lattice
