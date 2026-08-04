@@ -12,6 +12,7 @@ type TreeGraph = {
   children: Map<string, string[]>;
   loaded: Set<string>;
   nodes: Map<string, TreeNodeData>;
+  parents: Map<string, string | null>;
 };
 
 function addChildren(graph: TreeGraph, parentId: string, children: TreeNodeData[]): void {
@@ -24,6 +25,7 @@ function addChildren(graph: TreeGraph, parentId: string, children: TreeNodeData[
   for (const child of children) {
     const { children: nested, ...node } = child;
     graph.nodes.set(child.id, node);
+    graph.parents.set(child.id, parentId === ROOTS_KEY ? null : parentId);
 
     if (nested) {
       addChildren(graph, child.id, nested);
@@ -32,7 +34,12 @@ function addChildren(graph: TreeGraph, parentId: string, children: TreeNodeData[
 }
 
 function createGraph(nodes: TreeNodeData[], rootsLoaded: boolean): TreeGraph {
-  const graph: TreeGraph = { children: new Map(), loaded: new Set(), nodes: new Map() };
+  const graph: TreeGraph = {
+    children: new Map(),
+    loaded: new Set(),
+    nodes: new Map(),
+    parents: new Map(),
+  };
 
   addChildren(graph, ROOTS_KEY, nodes);
 
@@ -48,9 +55,86 @@ function mergeChildren(graph: TreeGraph, parentId: string, children: TreeNodeDat
     children: new Map(graph.children),
     loaded: new Set(graph.loaded),
     nodes: new Map(graph.nodes),
+    parents: new Map(graph.parents),
   };
 
   addChildren(next, parentId, children);
+
+  return next;
+}
+
+export type TreeMoveRequest = {
+  nodeId: string;
+  parentId: string | null;
+  position: number;
+};
+
+function isDescendant(graph: TreeGraph, ancestorId: string, nodeId: string): boolean {
+  let parentId = graph.parents.get(nodeId);
+
+  while (parentId !== null && parentId !== undefined) {
+    if (parentId === ancestorId) {
+      return true;
+    }
+
+    parentId = graph.parents.get(parentId);
+  }
+
+  return false;
+}
+
+function moveTreeNode(graph: TreeGraph, request: TreeMoveRequest): TreeGraph | null {
+  const node = graph.nodes.get(request.nodeId);
+  const target = request.parentId === null ? null : graph.nodes.get(request.parentId);
+
+  if (
+    !node ||
+    node.disabled === true ||
+    (request.parentId !== null && !target) ||
+    target?.disabled === true ||
+    request.nodeId === request.parentId ||
+    (request.parentId !== null && isDescendant(graph, request.nodeId, request.parentId))
+  ) {
+    return null;
+  }
+
+  const sourceParentId = graph.parents.get(request.nodeId) ?? null;
+  const sourceKey = sourceParentId ?? ROOTS_KEY;
+  const targetKey = request.parentId ?? ROOTS_KEY;
+  const sourceChildren = graph.children.get(sourceKey) ?? [];
+  const sourceIndex = sourceChildren.indexOf(request.nodeId);
+
+  if (sourceIndex === -1) {
+    return null;
+  }
+
+  const next: TreeGraph = {
+    children: new Map(graph.children),
+    loaded: new Set(graph.loaded),
+    nodes: new Map(graph.nodes),
+    parents: new Map(graph.parents),
+  };
+  const withoutNode = sourceChildren.filter((id) => id !== request.nodeId);
+  const targetChildren = sourceKey === targetKey ? withoutNode : [...(graph.children.get(targetKey) ?? [])];
+  const position = Math.max(0, Math.min(request.position, targetChildren.length));
+
+  if (sourceKey === targetKey && sourceIndex === position) {
+    return null;
+  }
+
+  targetChildren.splice(position, 0, request.nodeId);
+  next.children.set(sourceKey, withoutNode);
+  next.children.set(targetKey, targetChildren);
+  next.loaded.add(targetKey);
+  next.parents.set(request.nodeId, request.parentId);
+
+  if (sourceParentId !== null && withoutNode.length === 0) {
+    next.nodes.set(sourceParentId, { ...graph.nodes.get(sourceParentId)!, hasChildren: false });
+  }
+
+  if (request.parentId !== null) {
+    next.nodes.set(request.parentId, { ...target!, hasChildren: true });
+  }
 
   return next;
 }
@@ -69,14 +153,23 @@ export type TreeFocusDirection = "first" | "firstChild" | "last" | "next" | "par
 export type TreeContextValue = {
   activate: (id: string) => void;
   activeId: string | null;
+  canDropOn: (sourceId: string, targetId: string) => boolean;
   canLoad: boolean;
+  canMove: boolean;
+  childrenCount: (id: string | null) => number;
   childrenFor: (id: string) => TreeNodeData[] | undefined;
+  expand: (id: string) => void;
   expanded: Set<string>;
   focus: (id: string) => void;
   focusedId: string | null;
+  isLoaded: (id: string) => boolean;
   isLoading: (id: string) => boolean;
   loadChildren: (id: string) => Promise<void>;
+  move: (request: TreeMoveRequest) => Promise<boolean>;
   moveFocus: (fromId: string, direction: TreeFocusDirection) => void;
+  moving: boolean;
+  parentFor: (id: string) => string | null;
+  positionFor: (id: string) => number;
   register: (entry: TreeItemRegistration) => void;
   toggle: (id: string) => void;
   typeAhead: (fromId: string, character: string) => void;
@@ -86,14 +179,23 @@ export type TreeContextValue = {
 const defaultTreeContext: TreeContextValue = {
   activate: () => {},
   activeId: null,
+  canDropOn: () => false,
   canLoad: false,
+  canMove: false,
+  childrenCount: () => 0,
   childrenFor: () => undefined,
+  expand: () => {},
   expanded: new Set(),
   focus: () => {},
   focusedId: null,
+  isLoaded: () => false,
   isLoading: () => false,
   loadChildren: async () => {},
+  move: async () => false,
   moveFocus: () => {},
+  moving: false,
+  parentFor: () => null,
+  positionFor: () => -1,
   register: () => {},
   toggle: () => {},
   typeAhead: () => {},
@@ -154,6 +256,7 @@ export function useTreeState({
   componentRef,
   lazy,
   nodes,
+  moveAction,
   rememberState,
   revision,
   selectAction,
@@ -166,6 +269,7 @@ export function useTreeState({
   componentRef: string | null;
   lazy: boolean;
   nodes: TreeNodeData[];
+  moveAction: Node<"action"> | null;
   rememberState: boolean;
   revision: string | number | null;
   selectAction: Node<"action"> | null;
@@ -184,6 +288,7 @@ export function useTreeState({
   const [focusedId, setFocusedId] = useState<string | null>(() => nodes[0]?.id ?? null);
   const [graph, setGraph] = useState(() => createGraph(nodes, !(lazy && nodes.length === 0)));
   const [loading, setLoading] = useState<Set<string>>(new Set());
+  const [moving, setMoving] = useState(false);
   const registryRef = useRef<Map<string, TreeItemRegistration>>(new Map());
   const typeAheadRef = useRef<{ text: string; timestamp: number }>({ text: "", timestamp: 0 });
   const inFlightRef = useRef<Map<string, Promise<void>>>(new Map());
@@ -191,12 +296,14 @@ export function useTreeState({
   const generationRef = useRef(0);
   const pendingFocusRef = useRef<string | null>(null);
   const selectionRef = useRef(0);
+  const movingRef = useRef(false);
   const activeIdRef = useRef(activeId);
   const wireRef = useRef({ nodes, revision });
   const dispatch = useEffectDispatcher();
   graphRef.current = graph;
   activeIdRef.current = activeId;
   const canLoad = endpoint !== null && endpoint !== "";
+  const canMove = moveAction !== null;
 
   useEffect(() => {
     selectionRef.current += 1;
@@ -231,6 +338,11 @@ export function useTreeState({
         return next;
       });
     },
+    [setExpanded],
+  );
+
+  const expand = useCallback(
+    (id: string) => setExpanded((current) => new Set(current).add(id)),
     [setExpanded],
   );
 
@@ -419,7 +531,73 @@ export function useTreeState({
     [graph],
   );
 
+  const childrenCount = useCallback(
+    (id: string | null) => graphRef.current.children.get(id ?? ROOTS_KEY)?.length ?? 0,
+    [],
+  );
+
+  const parentFor = useCallback((id: string) => graphRef.current.parents.get(id) ?? null, []);
+
+  const positionFor = useCallback((id: string) => {
+    const parentId = graphRef.current.parents.get(id) ?? null;
+
+    return graphRef.current.children.get(parentId ?? ROOTS_KEY)?.indexOf(id) ?? -1;
+  }, []);
+
+  const canDropOn = useCallback((sourceId: string, targetId: string) => {
+    const current = graphRef.current;
+    const source = current.nodes.get(sourceId);
+    const target = current.nodes.get(targetId);
+
+    return Boolean(
+      source &&
+        target &&
+        source.disabled !== true &&
+        target.disabled !== true &&
+        sourceId !== targetId &&
+        !isDescendant(current, sourceId, targetId),
+    );
+  }, []);
+
+  const move = useCallback(
+    async (request: TreeMoveRequest): Promise<boolean> => {
+      if (!moveAction || movingRef.current) {
+        return false;
+      }
+
+      const previous = graphRef.current;
+      const next = moveTreeNode(previous, request);
+
+      if (!next) {
+        return false;
+      }
+
+      const generation = generationRef.current;
+      movingRef.current = true;
+      graphRef.current = next;
+      setGraph(next);
+      setMoving(true);
+      focus(request.nodeId);
+
+      const accepted = await runTreeAction(moveAction, request, dispatch);
+
+      if (!accepted && generation === generationRef.current) {
+        graphRef.current = previous;
+        setGraph(previous);
+        focus(request.nodeId);
+      }
+
+      movingRef.current = false;
+      setMoving(false);
+
+      return accepted;
+    },
+    [dispatch, focus, moveAction],
+  );
+
   const isLoading = useCallback((id: string) => loading.has(id), [loading]);
+
+  const isLoaded = useCallback((id: string) => graphRef.current.loaded.has(id), []);
 
   useEffect(() => {
     if (lazy && !graph.loaded.has(ROOTS_KEY)) {
@@ -465,14 +643,23 @@ export function useTreeState({
     () => ({
       activate,
       activeId,
+      canDropOn,
       canLoad,
+      canMove,
+      childrenCount,
       childrenFor,
+      expand,
       expanded,
       focus,
       focusedId,
+      isLoaded,
       isLoading,
       loadChildren,
+      move,
       moveFocus,
+      moving,
+      parentFor,
+      positionFor,
       register,
       toggle,
       typeAhead,
@@ -481,14 +668,23 @@ export function useTreeState({
     [
       activate,
       activeId,
+      canDropOn,
       canLoad,
+      canMove,
+      childrenCount,
       childrenFor,
+      expand,
       expanded,
       focus,
       focusedId,
+      isLoaded,
       isLoading,
       loadChildren,
+      move,
       moveFocus,
+      moving,
+      parentFor,
+      positionFor,
       register,
       toggle,
       typeAhead,

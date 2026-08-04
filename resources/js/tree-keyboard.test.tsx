@@ -31,6 +31,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 function renderTree(props: Record<string, unknown>, id = "t1") {
@@ -325,5 +326,110 @@ describe("Tree keyboard navigation", () => {
 
     expect(router.visit).toHaveBeenCalledWith("/c/5");
     expect(actionClicks).toEqual([]);
+  });
+
+  it("moves a node with Ctrl Shift Arrow and posts the zero-based move contract", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ effects: [] }), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const movable = [treeNode("a", "Alpha"), treeNode("b", "Beta"), treeNode("c", "Gamma")];
+
+    renderTree({
+      moveAction: {
+        props: { endpoint: "/lattice/actions/move", method: "post", ref: "move-ref" },
+        type: "action",
+      },
+      nodes: movable,
+    });
+
+    expect(item("a")).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Control+Shift+ArrowUp Control+Shift+ArrowDown Control+Shift+ArrowLeft Control+Shift+ArrowRight",
+    );
+
+    fireEvent.keyDown(item("a"), { ctrlKey: true, key: "ArrowDown", shiftKey: true });
+
+    await vi.waitFor(() => {
+      expect(screen.getAllByRole("treeitem").map((element) => element.getAttribute("aria-label"))).toEqual([
+        "Beta",
+        "Alpha",
+        "Gamma",
+      ]);
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({ nodeId: "a", parentId: null, position: 1 });
+  });
+
+  it("indents and outdents with the keyboard alternative", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ effects: [] }), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTree({
+      moveAction: {
+        props: { endpoint: "/lattice/actions/move", method: "post", ref: "move-ref" },
+        type: "action",
+      },
+      nodes: [treeNode("a", "Alpha"), treeNode("b", "Beta")],
+    });
+
+    fireEvent.keyDown(item("b"), { ctrlKey: true, key: "ArrowRight", shiftKey: true });
+
+    await vi.waitFor(() => expect(item("b")).toHaveAttribute("aria-level", "2"));
+    expect(item("a")).toHaveAttribute("aria-expanded", "true");
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    fireEvent.keyDown(item("b"), { ctrlKey: true, key: "ArrowLeft", shiftKey: true });
+
+    await vi.waitFor(() => expect(item("b")).toHaveAttribute("aria-level", "1"));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body))).toEqual({
+      nodeId: "b",
+      parentId: "a",
+      position: 0,
+    });
+    expect(JSON.parse(String((fetchMock.mock.calls[1] as [string, RequestInit])[1].body))).toEqual({
+      nodeId: "b",
+      parentId: null,
+      position: 1,
+    });
+  });
+
+  it("rolls an optimistic keyboard move back when the server rejects it", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ effects: [] }), {
+        headers: { "Content-Type": "application/json" },
+        status: 422,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderTree({
+      moveAction: {
+        props: { endpoint: "/lattice/actions/move", method: "post", ref: "move-ref" },
+        type: "action",
+      },
+      nodes: [treeNode("a", "Alpha"), treeNode("b", "Beta")],
+    });
+
+    fireEvent.keyDown(item("a"), { ctrlKey: true, key: "ArrowDown", shiftKey: true });
+
+    await vi.waitFor(() => {
+      expect(screen.getAllByRole("treeitem").map((element) => element.getAttribute("aria-label"))).toEqual([
+        "Alpha",
+        "Beta",
+      ]);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
