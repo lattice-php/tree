@@ -56,7 +56,11 @@
             "@boost:refresh"
         ],
         "boost:refresh": "[ -n \"$CI\" ] || [ ! -f vendor/bin/testbench ] || [ ! -f boost.json ] || { [ -f package.json ] && [ ! -d node_modules ]; } || vendor/bin/testbench boost:update --no-interaction || true",
-        "serve": "@php vendor/bin/testbench serve",
+        "build": "@php vendor/bin/testbench workbench:build --ansi",
+        "serve": [
+            "@build",
+            "@php vendor/bin/testbench serve"
+        ],
         "test": "pest --exclude-testsuite=Browser",
         "test:browser": [
             "npm run build",
