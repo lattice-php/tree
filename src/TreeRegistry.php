@@ -53,19 +53,15 @@ final class TreeRegistry extends DefinitionRegistry
      */
     public function component(string $tree, array $context = []): Tree
     {
-        $key = $this->registeredKeyFor($tree);
-        $definition = $this->make($tree)->withContext($context);
-
-        if (! $this->authorizedToRender($definition)) {
-            return Tree::make($key)->hidden();
-        }
-
-        return Tree::make($key)
-            ->id($key)
-            ->signedAs($key)
-            ->context($context)
-            ->endpoint($this->endpointFor($key))
-            ->source($definition->source());
+        return $this->gatedComponent(
+            $tree,
+            fn (string $key): Tree => Tree::make($key),
+            fn (TreeDefinition $definition, Tree $component, string $key): Tree => $component
+                ->id($key)
+                ->endpoint($this->endpointFor($key))
+                ->source($definition->source()),
+            $context,
+        );
     }
 
     protected function definitionClass(): string

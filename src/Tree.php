@@ -6,12 +6,13 @@ namespace Lattice\Tree;
 use InvalidArgumentException;
 use Lattice\Lattice\Attributes\AsComponent;
 use Lattice\Lattice\Attributes\SerializationHook;
+use Lattice\Lattice\Core\Contracts\InteractiveComponent;
 use Lattice\Lattice\Ui\Components\Component;
 use Lattice\Lattice\Ui\Components\IsInteractive;
 use LogicException;
 
 #[AsComponent('tree')]
-class Tree extends Component
+class Tree extends Component implements InteractiveComponent
 {
     use IsInteractive;
 

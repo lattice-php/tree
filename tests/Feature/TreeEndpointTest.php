@@ -11,7 +11,7 @@ use function Pest\Laravel\getJson;
 
 it('serves one level of children for a sealed tree', function (): void {
     $electronics = seedCategoryTree();
-    $tree = $this->sealTree(Tree::use(CategoryTree::class)->lazy());
+    $tree = $this->sealTree(fn (): Tree => Tree::use(CategoryTree::class)->lazy());
 
     $response = getJson(
         $tree['props']['endpoint'].'?parent='.$electronics->getKey(),
@@ -47,7 +47,7 @@ it('serves one level of children for a sealed tree', function (): void {
 
 it('serves the roots when no parent is given', function (): void {
     seedCategoryTree();
-    $tree = $this->sealTree(Tree::use(CategoryTree::class)->lazy());
+    $tree = $this->sealTree(fn (): Tree => Tree::use(CategoryTree::class)->lazy());
 
     $response = getJson($tree['props']['endpoint'], ['X-Lattice-Ref' => $tree['props']['ref']]);
 
@@ -57,21 +57,21 @@ it('serves the roots when no parent is given', function (): void {
 
 it('rejects a request without a ref', function (): void {
     seedCategoryTree();
-    $tree = $this->sealTree(Tree::use(CategoryTree::class)->lazy());
+    $tree = $this->sealTree(fn (): Tree => Tree::use(CategoryTree::class)->lazy());
 
     getJson($tree['props']['endpoint'])->assertForbidden();
 });
 
 it('rejects a forged ref', function (): void {
     seedCategoryTree();
-    $tree = $this->sealTree(Tree::use(CategoryTree::class)->lazy());
+    $tree = $this->sealTree(fn (): Tree => Tree::use(CategoryTree::class)->lazy());
 
     getJson($tree['props']['endpoint'], ['X-Lattice-Ref' => 'forged'])->assertForbidden();
 });
 
 it('rejects an expired ref', function (): void {
     seedCategoryTree();
-    $tree = $this->sealTree(Tree::use(CategoryTree::class)->lazy());
+    $tree = $this->sealTree(fn (): Tree => Tree::use(CategoryTree::class)->lazy());
 
     $this->travel(config('lattice.security.ref_lifetime', 30) + 1)->minutes();
 
@@ -80,7 +80,7 @@ it('rejects an expired ref', function (): void {
 
 it('rejects a ref sealed for a different tree', function (): void {
     seedCategoryTree();
-    $tree = $this->sealTree(Tree::use(CategoryTree::class)->lazy());
+    $tree = $this->sealTree(fn (): Tree => Tree::use(CategoryTree::class)->lazy());
 
     $foreign = app(SignsComponentReferences::class)->seal('tree', 'denied', []);
 
@@ -104,7 +104,7 @@ it('re-applies the sealed context on the endpoint', function (): void {
     Category::factory()->create(['name' => 'Books']);
 
     $tree = $this->sealTree(
-        Tree::use(ScopedCategoryTree::class, ['except' => 'Books'])->lazy(),
+        fn (): Tree => Tree::use(ScopedCategoryTree::class, ['except' => 'Books'])->lazy(),
     );
 
     $response = getJson($tree['props']['endpoint'], ['X-Lattice-Ref' => $tree['props']['ref']]);
