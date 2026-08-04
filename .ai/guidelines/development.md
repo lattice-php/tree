@@ -46,6 +46,6 @@
   helpers; lazy tests stub `globalThis.fetch`.
 - Endpoint behavior (refs, authorization, context round-trip) is feature-tested through HTTP; seal refs with the
   `TestCase::sealTree()` helper, which wraps core's shipped `InteractsWithLatticeComponents` trait.
-- For real-browser coverage (Playwright via Pest 4) use `tests/Browser`; `BrowserTestCase` guards against a missing or
+- For real-browser coverage (Playwright via Pest 5) use `tests/Browser`; `BrowserTestCase` guards against a missing or
   stale workbench build, and the `assert*Eventually` helpers in `tests/Support/Browser.php` absorb async UI settling.
 - It is acceptable to add stable `data-test` attributes when they make assertions clearer or less brittle.
