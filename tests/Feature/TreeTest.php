@@ -4,6 +4,9 @@ declare(strict_types=1);
 use Lattice\Tree\CallbackTreeSource;
 use Lattice\Tree\Tree;
 use Lattice\Tree\TreeNode;
+use Lattice\Tree\TreePathSource;
+use Lattice\Tree\TreeSource;
+use Workbench\App\Actions\ShowTreeNodeInfoAction;
 
 it('serializes an eager node tree with defaults', function (): void {
     $node = wire(
@@ -27,6 +30,44 @@ it('serializes activeId, defaultExpanded, and rememberState', function (): void 
     expect($node['props'])->toMatchArray([
         'activeId' => '1', 'defaultExpanded' => ['1'], 'rememberState' => true,
     ]);
+});
+
+it('serializes revision and registered interaction actions', function (): void {
+    $node = $this->sealTree(fn (): Tree => Tree::make('categories')
+        ->nodes([TreeNode::make('1', 'A')])
+        ->revision('catalog-v2')
+        ->selectAction(ShowTreeNodeInfoAction::class)
+        ->moveAction(ShowTreeNodeInfoAction::class));
+
+    expect($node['props']['revision'])->toBe('catalog-v2')
+        ->and($node['props']['selectAction'])->toMatchArray(['type' => 'action'])
+        ->and($node['props']['selectAction']['props']['ref'])->toBeString()
+        ->and($node['props']['moveAction'])->toMatchArray(['type' => 'action'])
+        ->and($node['props']['moveAction']['props']['ref'])->toBeString();
+});
+
+it('derives the active node ancestor path from capable sources', function (): void {
+    $source = new class implements TreePathSource, TreeSource
+    {
+        public function roots(): iterable
+        {
+            return [TreeNode::make('root', 'Root')->hasChildren()];
+        }
+
+        public function children(string $parentId): iterable
+        {
+            return [];
+        }
+
+        public function path(string $nodeId): ?array
+        {
+            return $nodeId === 'target' ? ['root', 'parent'] : null;
+        }
+    };
+
+    $node = wire(Tree::make()->source($source)->activeId('target'));
+
+    expect($node['props']['activePath'])->toBe(['root', 'parent']);
 });
 
 it('serializes source children recursively for hasChildren nodes', function (): void {

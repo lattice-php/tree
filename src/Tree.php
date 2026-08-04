@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace Lattice\Tree;
 
 use InvalidArgumentException;
+use Lattice\Lattice\Actions\ActionDefinition;
+use Lattice\Lattice\Actions\Components\Action;
 use Lattice\Lattice\Attributes\AsComponent;
 use Lattice\Lattice\Attributes\SerializationHook;
 use Lattice\Lattice\Core\Contracts\InteractiveComponent;
@@ -24,6 +26,12 @@ class Tree extends Component implements InteractiveComponent
     public array $defaultExpanded = [];
 
     public bool $rememberState = false;
+
+    public string|int|null $revision = null;
+
+    public ?Action $selectAction = null;
+
+    public ?Action $moveAction = null;
 
     public ?string $endpoint = null;
 
@@ -125,6 +133,49 @@ class Tree extends Component implements InteractiveComponent
         $this->rememberState = $remember;
 
         return $this;
+    }
+
+    public function revision(string|int|null $revision): static
+    {
+        $this->revision = $revision;
+
+        return $this;
+    }
+
+    /**
+     * @param  class-string<ActionDefinition>  $action
+     * @param  array<string, mixed>  $context
+     */
+    public function selectAction(string $action, array $context = []): static
+    {
+        $this->selectAction = Action::use($action, $context);
+
+        return $this;
+    }
+
+    /**
+     * @param  class-string<ActionDefinition>  $action
+     * @param  array<string, mixed>  $context
+     */
+    public function moveAction(string $action, array $context = []): static
+    {
+        $this->moveAction = Action::use($action, $context);
+
+        return $this;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    #[SerializationHook(priority: 300)]
+    protected function serialiseActivePath(array $data): array
+    {
+        if ($this->activeId !== null && $this->source instanceof TreePathSource) {
+            $data['props']['activePath'] = $this->source->path($this->activeId);
+        }
+
+        return $data;
     }
 
     /**
