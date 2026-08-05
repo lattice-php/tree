@@ -110,9 +110,7 @@ describe("Tree component", () => {
     fireEvent.click(screen.getByTestId("tree-node-9"));
     expect(screen.getByTestId("tree-node-9")).toHaveAttribute("aria-selected", "true");
 
-    await waitFor(() =>
-      expect(screen.getByTestId("tree-node-1")).toHaveAttribute("aria-selected", "true"),
-    );
+    await waitFor(() => expect(screen.getByTestId("tree-node-1")).toHaveAttribute("aria-selected", "true"));
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toEqual({ nodeId: "9" });

@@ -48,12 +48,12 @@ it('serializes revision and registered interaction actions', function (): void {
 it('derives the active node ancestor path from capable sources', function (): void {
     $source = new class implements TreeSource
     {
-        public function roots(): iterable
+        public function roots(): array
         {
             return [TreeNode::make('root', 'Root')->hasChildren()];
         }
 
-        public function children(string $parentId): iterable
+        public function children(string $parentId): array
         {
             return [];
         }

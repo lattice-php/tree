@@ -99,6 +99,18 @@ it('keeps row action controls out of the page tab order so Tab exits the tree cl
     $page->assertNoJavaScriptErrors();
 });
 
+it('reparents a node with a real pointer drag', function (): void {
+    $page = visit('/tree')
+        ->assertNotPresent('[data-test="tree-node-documents"] [data-test="tree-node-help"]')
+        ->drag('[data-test="tree-node-help"]', '[data-test="tree-node-documents"]');
+
+    assertPresentEventually($page, '[data-test="tree-node-documents"] [data-test="tree-node-help"]');
+
+    $page
+        ->assertAriaAttribute('[data-test="tree-node-help"]', 'level', '2')
+        ->assertNoJavaScriptErrors();
+});
+
 it('opens the info modal with Enter on the modal-action node and returns focus on close', function (): void {
     $page = visit('/tree')
         ->keys('[data-test="tree-node-electronics"]', ['End']);

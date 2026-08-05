@@ -16,15 +16,9 @@ import TreeComponent, { type TreeNodeData } from "./tree";
  * Renders `ui` with `registry` available to the core `<Renderer>` (used here to
  * render a node's schema body), mirroring what the app Provider does.
  */
-export function renderWithRegistry(
-  ui: ReactElement,
-  registry: Registry,
-  options?: RenderOptions,
-): RenderResult {
+export function renderWithRegistry(ui: ReactElement, registry: Registry, options?: RenderOptions): RenderResult {
   return render(ui, {
-    wrapper: ({ children }) => (
-      <RegistryContext.Provider value={registry}>{children}</RegistryContext.Provider>
-    ),
+    wrapper: ({ children }) => <RegistryContext.Provider value={registry}>{children}</RegistryContext.Provider>,
     ...options,
   });
 }

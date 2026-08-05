@@ -8,9 +8,9 @@ use Closure;
 final readonly class CallbackTreeSource implements TreeSource
 {
     /**
-     * @param  Closure(): iterable<int, TreeNode>  $roots
-     * @param  (Closure(string): iterable<int, TreeNode>)|null  $children
-     * @param  (Closure(string): list<string>|null)|null  $path
+     * @param  Closure(): list<TreeNode>  $roots
+     * @param  (Closure(string): list<TreeNode>)|null  $children
+     * @param  (Closure(string): (list<string>|null))|null  $path
      */
     public function __construct(
         private Closure $roots,
@@ -18,12 +18,12 @@ final readonly class CallbackTreeSource implements TreeSource
         private ?Closure $path = null,
     ) {}
 
-    public function roots(): iterable
+    public function roots(): array
     {
         return ($this->roots)();
     }
 
-    public function children(string $parentId): iterable
+    public function children(string $parentId): array
     {
         return $this->children instanceof Closure ? ($this->children)($parentId) : [];
     }

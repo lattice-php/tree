@@ -6,9 +6,12 @@
     "build": "vite build",
     "dev": "vite",
     "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
     "test": "vitest run"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.7",
     "@inertiajs/react": "^3.0.0",
     "@inertiajs/vite": "^3.0.0",
     "@lattice-php/lattice": "^0.38.0",

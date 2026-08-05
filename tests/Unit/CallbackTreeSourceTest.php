@@ -24,7 +24,7 @@ it('returns no children when no children closure is given', function (): void {
 it('resolves an ancestor path when a path callback is given', function (): void {
     $source = new CallbackTreeSource(
         roots: fn (): array => [],
-        path: fn (string $nodeId): ?array => $nodeId === 'target' ? ['root', 'parent'] : null,
+        path: fn (string $nodeId) => $nodeId === 'target' ? ['root', 'parent'] : null,
     );
 
     expect($source->path('target'))->toBe(['root', 'parent'])

@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { RefObject } from "react";
 import { runAction } from "@lattice-php/lattice/action";
 import { apiFetch, apiJson, usePersistentState } from "@lattice-php/lattice/core";
@@ -139,6 +148,39 @@ function moveTreeNode(graph: TreeGraph, request: TreeMoveRequest): TreeGraph | n
   return next;
 }
 
+/**
+ * The mutable state callbacks must read synchronously — a drop handler decides
+ * against the graph as it is at drop time, not as it was when the callback was
+ * created. Keeping it in a store rather than in `useState` plus a mirrored ref
+ * means there is one always-current copy: render reads it through
+ * `useSyncExternalStore`, callbacks read it through `getState()`.
+ */
+type TreeState = {
+  activeId: string | null;
+  graph: TreeGraph;
+  moving: boolean;
+};
+
+function createTreeStore(initial: TreeState) {
+  let state = initial;
+  const listeners = new Set<() => void>();
+
+  return {
+    getState: () => state,
+    setState: (patch: Partial<TreeState>) => {
+      state = { ...state, ...patch };
+      listeners.forEach((listener) => listener());
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
 export type TreeItemRegistration = {
   id: string;
   label: string;
@@ -275,40 +317,36 @@ export function useTreeState({
   selectAction: Node<"action"> | null;
   storageKey: string;
 }): TreeContextValue {
-  const [expanded, setExpanded] = usePersistentState<Set<string>>(
-    storageKey,
-    () => new Set(defaultExpanded),
-    {
-      enabled: rememberState,
-      parse: parseExpanded,
-      serialize: (value) => JSON.stringify([...value]),
-    },
-  );
-  const [activeId, setActiveId] = useState<string | null>(controlledActiveId);
+  const [expanded, setExpanded] = usePersistentState<Set<string>>(storageKey, () => new Set(defaultExpanded), {
+    enabled: rememberState,
+    parse: parseExpanded,
+    serialize: (value) => JSON.stringify([...value]),
+  });
   const [focusedId, setFocusedId] = useState<string | null>(() => nodes[0]?.id ?? null);
-  const [graph, setGraph] = useState(() => createGraph(nodes, !(lazy && nodes.length === 0)));
   const [loading, setLoading] = useState<Set<string>>(new Set());
-  const [moving, setMoving] = useState(false);
+  const [store] = useState(() =>
+    createTreeStore({
+      activeId: controlledActiveId,
+      graph: createGraph(nodes, !(lazy && nodes.length === 0)),
+      moving: false,
+    }),
+  );
+  const { activeId, graph, moving } = useSyncExternalStore(store.subscribe, store.getState);
   const registryRef = useRef<Map<string, TreeItemRegistration>>(new Map());
   const typeAheadRef = useRef<{ text: string; timestamp: number }>({ text: "", timestamp: 0 });
   const inFlightRef = useRef<Map<string, Promise<void>>>(new Map());
-  const graphRef = useRef(graph);
   const generationRef = useRef(0);
   const pendingFocusRef = useRef<string | null>(null);
   const selectionRef = useRef(0);
-  const movingRef = useRef(false);
-  const activeIdRef = useRef(activeId);
   const wireRef = useRef({ nodes, revision });
   const dispatch = useEffectDispatcher();
-  graphRef.current = graph;
-  activeIdRef.current = activeId;
   const canLoad = endpoint !== null && endpoint !== "";
   const canMove = moveAction !== null;
 
   useEffect(() => {
     selectionRef.current += 1;
-    setActiveId(controlledActiveId);
-  }, [controlledActiveId]);
+    store.setState({ activeId: controlledActiveId });
+  }, [controlledActiveId, store]);
 
   useEffect(() => {
     if (wireRef.current.nodes === nodes && wireRef.current.revision === revision) {
@@ -318,11 +356,9 @@ export function useTreeState({
     wireRef.current = { nodes, revision };
     generationRef.current += 1;
     inFlightRef.current.clear();
-    const next = createGraph(nodes, !(lazy && nodes.length === 0));
-    graphRef.current = next;
-    setGraph(next);
+    store.setState({ graph: createGraph(nodes, !(lazy && nodes.length === 0)) });
     setLoading(new Set());
-  }, [lazy, nodes, revision]);
+  }, [lazy, nodes, revision, store]);
 
   const toggle = useCallback(
     (id: string) => {
@@ -341,17 +377,13 @@ export function useTreeState({
     [setExpanded],
   );
 
-  const expand = useCallback(
-    (id: string) => setExpanded((current) => new Set(current).add(id)),
-    [setExpanded],
-  );
+  const expand = useCallback((id: string) => setExpanded((current) => new Set(current).add(id)), [setExpanded]);
 
   const activate = useCallback(
     (id: string) => {
-      const previous = activeIdRef.current;
+      const previous = store.getState().activeId;
       const selection = ++selectionRef.current;
-      activeIdRef.current = id;
-      setActiveId(id);
+      store.setState({ activeId: id });
 
       if (!selectAction) {
         return;
@@ -359,12 +391,11 @@ export function useTreeState({
 
       void runTreeAction(selectAction, { nodeId: id }, dispatch).then((accepted) => {
         if (!accepted && selectionRef.current === selection) {
-          activeIdRef.current = previous;
-          setActiveId(previous);
+          store.setState({ activeId: previous });
         }
       });
     },
-    [dispatch, selectAction],
+    [dispatch, selectAction, store],
   );
 
   const focus = useCallback((id: string) => {
@@ -464,7 +495,7 @@ export function useTreeState({
 
   const loadChildren = useCallback(
     (id: string): Promise<void> => {
-      if (!canLoad || graphRef.current.loaded.has(id)) {
+      if (!canLoad || store.getState().graph.loaded.has(id)) {
         return Promise.resolve();
       }
 
@@ -477,21 +508,15 @@ export function useTreeState({
       const generation = generationRef.current;
       setLoading((current) => new Set(current).add(id));
 
-      const request = apiJson<{ nodes: TreeNodeData[] }>(
-        `${endpoint}?parent=${encodeURIComponent(id)}`,
-        { ref: componentRef ?? "" },
-      )
+      const request = apiJson<{ nodes: TreeNodeData[] }>(`${endpoint}?parent=${encodeURIComponent(id)}`, {
+        ref: componentRef ?? "",
+      })
         .then(({ nodes: fetched }) => {
           if (generation !== generationRef.current) {
             return;
           }
 
-          setGraph((current) => {
-            const next = mergeChildren(current, id, fetched);
-            graphRef.current = next;
-
-            return next;
-          });
+          store.setState({ graph: mergeChildren(store.getState().graph, id, fetched) });
         })
         .catch(() => {
           if (generation !== generationRef.current) {
@@ -523,7 +548,7 @@ export function useTreeState({
 
       return request;
     },
-    [canLoad, componentRef, endpoint, setExpanded],
+    [canLoad, componentRef, endpoint, setExpanded, store],
   );
 
   const childrenFor = useCallback(
@@ -532,40 +557,47 @@ export function useTreeState({
   );
 
   const childrenCount = useCallback(
-    (id: string | null) => graphRef.current.children.get(id ?? ROOTS_KEY)?.length ?? 0,
-    [],
+    (id: string | null) => store.getState().graph.children.get(id ?? ROOTS_KEY)?.length ?? 0,
+    [store],
   );
 
-  const parentFor = useCallback((id: string) => graphRef.current.parents.get(id) ?? null, []);
+  const parentFor = useCallback((id: string) => store.getState().graph.parents.get(id) ?? null, [store]);
 
-  const positionFor = useCallback((id: string) => {
-    const parentId = graphRef.current.parents.get(id) ?? null;
+  const positionFor = useCallback(
+    (id: string) => {
+      const current = store.getState().graph;
+      const parentId = current.parents.get(id) ?? null;
 
-    return graphRef.current.children.get(parentId ?? ROOTS_KEY)?.indexOf(id) ?? -1;
-  }, []);
+      return current.children.get(parentId ?? ROOTS_KEY)?.indexOf(id) ?? -1;
+    },
+    [store],
+  );
 
-  const canDropOn = useCallback((sourceId: string, targetId: string) => {
-    const current = graphRef.current;
-    const source = current.nodes.get(sourceId);
-    const target = current.nodes.get(targetId);
+  const canDropOn = useCallback(
+    (sourceId: string, targetId: string) => {
+      const current = store.getState().graph;
+      const source = current.nodes.get(sourceId);
+      const target = current.nodes.get(targetId);
 
-    return Boolean(
-      source &&
-        target &&
-        source.disabled !== true &&
-        target.disabled !== true &&
-        sourceId !== targetId &&
-        !isDescendant(current, sourceId, targetId),
-    );
-  }, []);
+      return Boolean(
+        source &&
+          target &&
+          source.disabled !== true &&
+          target.disabled !== true &&
+          sourceId !== targetId &&
+          !isDescendant(current, sourceId, targetId),
+      );
+    },
+    [store],
+  );
 
   const move = useCallback(
     async (request: TreeMoveRequest): Promise<boolean> => {
-      if (!moveAction || movingRef.current) {
+      if (!moveAction || store.getState().moving) {
         return false;
       }
 
-      const previous = graphRef.current;
+      const previous = store.getState().graph;
       const next = moveTreeNode(previous, request);
 
       if (!next) {
@@ -573,31 +605,26 @@ export function useTreeState({
       }
 
       const generation = generationRef.current;
-      movingRef.current = true;
-      graphRef.current = next;
-      setGraph(next);
-      setMoving(true);
+      store.setState({ graph: next, moving: true });
       focus(request.nodeId);
 
       const accepted = await runTreeAction(moveAction, request, dispatch);
 
       if (!accepted && generation === generationRef.current) {
-        graphRef.current = previous;
-        setGraph(previous);
+        store.setState({ graph: previous });
         focus(request.nodeId);
       }
 
-      movingRef.current = false;
-      setMoving(false);
+      store.setState({ moving: false });
 
       return accepted;
     },
-    [dispatch, focus, moveAction],
+    [dispatch, focus, moveAction, store],
   );
 
   const isLoading = useCallback((id: string) => loading.has(id), [loading]);
 
-  const isLoaded = useCallback((id: string) => graphRef.current.loaded.has(id), []);
+  const isLoaded = useCallback((id: string) => store.getState().graph.loaded.has(id), [store]);
 
   useEffect(() => {
     if (lazy && !graph.loaded.has(ROOTS_KEY)) {

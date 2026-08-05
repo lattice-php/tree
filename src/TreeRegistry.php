@@ -28,7 +28,6 @@ final class TreeRegistry extends DefinitionRegistry
 
         $parent = trim((string) $request->query('parent', ''));
         $nodes = $parent === '' ? $source->roots() : $source->children($parent);
-        $nodes = is_array($nodes) ? array_values($nodes) : iterator_to_array($nodes, false);
 
         return ['nodes' => array_map($this->serialiseLevelNode(...), $nodes)];
     }
