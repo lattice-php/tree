@@ -16,8 +16,10 @@
 - **Translations.** The component reads strings under its own `tree` i18next namespace with inline English defaults at
   the call site (`t("tree.expand", "Expand {{label}}", …)`). `TreeServiceProvider` registers the namespace on the
   translation loader; bundled `en`/`de` files live in `lang/`. Keep both locales in sync.
-- **Eager and lazy.** Inline `->nodes()`/`->source()` trees serialize the whole hierarchy server-side (with a
-  `MAX_DEPTH` cycle guard). Definition-backed trees (`#[AsTree]` + `Tree::use(Definition::class)->lazy($eagerDepth)`)
+- **Eager and lazy.** Inline `->nodes()`/`->source()` trees serialize the whole hierarchy server-side, to unlimited
+  depth. There is no depth cap; the only guard is a cycle guard — the walk carries the set of ancestor IDs on the
+  current path and drops a child that repeats one, so a source that returns its own ancestor terminates as a
+  `hasChildren` boundary instead of recursing. Definition-backed trees (`#[AsTree]` + `Tree::use(Definition::class)->lazy($eagerDepth)`)
   serialize only `$eagerDepth` levels; deeper levels are fetched from the package-registered
   `GET lattice/trees/{tree}` endpoint, verified via core's sealed-reference machinery (`IsInteractive`,
   `InteractsWithComponents`, the container-bound `SignsComponentReferences`). Inline trees cannot go lazy — no
