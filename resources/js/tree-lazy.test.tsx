@@ -129,9 +129,7 @@ describe("lazy tree", () => {
 
   it("reveals and focuses an active node through its lazy ancestor path", async () => {
     fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({ nodes: [treeNode("laptops", "Laptops", { hasChildren: true })] }),
-      )
+      .mockResolvedValueOnce(jsonResponse({ nodes: [treeNode("laptops", "Laptops", { hasChildren: true })] }))
       .mockResolvedValueOnce(jsonResponse({ nodes: [treeNode("target", "Target")] }));
 
     renderLazyTree({ activeId: "target", activePath: ["electronics", "laptops"], nodes: roots });

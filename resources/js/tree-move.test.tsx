@@ -20,9 +20,9 @@ function renderTree(nodes: TreeNodeData[], extra: Record<string, unknown> = {}) 
 }
 
 function dropTarget(id: string) {
-  const call = vi.mocked(dropTargetForElements).mock.calls.find(
-    ([options]) => options.element.parentElement?.getAttribute("data-test") === `tree-node-${id}`,
-  );
+  const call = vi
+    .mocked(dropTargetForElements)
+    .mock.calls.find(([options]) => options.element.parentElement?.getAttribute("data-test") === `tree-node-${id}`);
 
   if (!call) {
     throw new Error(`Missing drop target for ${id}`);
@@ -68,10 +68,7 @@ describe("tree drag and drop", () => {
     drop("a", "b", { currentLevel: 0, indentPerLevel: 24, type: "reorder-below" });
 
     await vi.waitFor(() => {
-      expect(screen.getAllByRole("treeitem").map((item) => item.getAttribute("aria-label"))).toEqual([
-        "Beta",
-        "Alpha",
-      ]);
+      expect(screen.getAllByRole("treeitem").map((item) => item.getAttribute("aria-label"))).toEqual(["Beta", "Alpha"]);
     });
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -129,8 +126,7 @@ describe("tree drag and drop", () => {
       vi
         .mocked(dropTargetForElements)
         .mock.calls.some(
-          ([options]) =>
-            options.element.parentElement?.getAttribute("data-test") === "tree-node-disabled",
+          ([options]) => options.element.parentElement?.getAttribute("data-test") === "tree-node-disabled",
         ),
     ).toBe(false);
   });

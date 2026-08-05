@@ -317,15 +317,11 @@ export function useTreeState({
   selectAction: Node<"action"> | null;
   storageKey: string;
 }): TreeContextValue {
-  const [expanded, setExpanded] = usePersistentState<Set<string>>(
-    storageKey,
-    () => new Set(defaultExpanded),
-    {
-      enabled: rememberState,
-      parse: parseExpanded,
-      serialize: (value) => JSON.stringify([...value]),
-    },
-  );
+  const [expanded, setExpanded] = usePersistentState<Set<string>>(storageKey, () => new Set(defaultExpanded), {
+    enabled: rememberState,
+    parse: parseExpanded,
+    serialize: (value) => JSON.stringify([...value]),
+  });
   const [focusedId, setFocusedId] = useState<string | null>(() => nodes[0]?.id ?? null);
   const [loading, setLoading] = useState<Set<string>>(new Set());
   const [store] = useState(() =>
@@ -381,10 +377,7 @@ export function useTreeState({
     [setExpanded],
   );
 
-  const expand = useCallback(
-    (id: string) => setExpanded((current) => new Set(current).add(id)),
-    [setExpanded],
-  );
+  const expand = useCallback((id: string) => setExpanded((current) => new Set(current).add(id)), [setExpanded]);
 
   const activate = useCallback(
     (id: string) => {
@@ -515,10 +508,9 @@ export function useTreeState({
       const generation = generationRef.current;
       setLoading((current) => new Set(current).add(id));
 
-      const request = apiJson<{ nodes: TreeNodeData[] }>(
-        `${endpoint}?parent=${encodeURIComponent(id)}`,
-        { ref: componentRef ?? "" },
-      )
+      const request = apiJson<{ nodes: TreeNodeData[] }>(`${endpoint}?parent=${encodeURIComponent(id)}`, {
+        ref: componentRef ?? "",
+      })
         .then(({ nodes: fetched }) => {
           if (generation !== generationRef.current) {
             return;
@@ -569,10 +561,7 @@ export function useTreeState({
     [store],
   );
 
-  const parentFor = useCallback(
-    (id: string) => store.getState().graph.parents.get(id) ?? null,
-    [store],
-  );
+  const parentFor = useCallback((id: string) => store.getState().graph.parents.get(id) ?? null, [store]);
 
   const positionFor = useCallback(
     (id: string) => {

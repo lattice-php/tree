@@ -184,17 +184,11 @@ describe("Tree keyboard navigation", () => {
   it("gives the chevron toggle an accessible name that reflects its state", () => {
     renderTree({ defaultExpanded: [], nodes });
 
-    expect(screen.getByTestId("tree-node-1-toggle")).toHaveAttribute(
-      "aria-label",
-      "Expand Electronics",
-    );
+    expect(screen.getByTestId("tree-node-1-toggle")).toHaveAttribute("aria-label", "Expand Electronics");
 
     fireEvent.click(screen.getByTestId("tree-node-1-toggle"));
 
-    expect(screen.getByTestId("tree-node-1-toggle")).toHaveAttribute(
-      "aria-label",
-      "Collapse Electronics",
-    );
+    expect(screen.getByTestId("tree-node-1-toggle")).toHaveAttribute("aria-label", "Collapse Electronics");
   });
 
   it("activates the focused node on Enter by following its href", () => {

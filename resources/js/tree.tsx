@@ -159,8 +159,7 @@ function TreeItem({
   function relativePosition(sourceId: string, targetId: string, after: boolean): number {
     const targetParentId = parentFor(targetId);
     const targetPosition = positionFor(targetId);
-    const sourceAdjustment =
-      parentFor(sourceId) === targetParentId && positionFor(sourceId) < targetPosition ? 1 : 0;
+    const sourceAdjustment = parentFor(sourceId) === targetParentId && positionFor(sourceId) < targetPosition ? 1 : 0;
 
     return targetPosition + (after ? 1 : 0) - sourceAdjustment;
   }
@@ -255,11 +254,7 @@ function TreeItem({
               element: target,
               indentPerLevel: 24,
               input,
-              mode: isExpanded
-                ? "expanded"
-                : siblingIndex === siblingCount
-                  ? "last-in-group"
-                  : "standard",
+              mode: isExpanded ? "expanded" : siblingIndex === siblingCount ? "last-in-group" : "standard",
             },
           ),
         onDrag: ({ self }) => setDropInstruction(extractTreeItemInstruction(self.data)?.type ?? null),
@@ -482,8 +477,7 @@ function TreeItem({
           dragging && "opacity-50",
           dropInstruction === "reorder-above" && "border-t-lt-primary",
           dropInstruction === "reorder-below" && "border-b-lt-primary",
-          (dropInstruction === "make-child" || dropInstruction === "reparent") &&
-            "ring-1 ring-lt-primary",
+          (dropInstruction === "make-child" || dropInstruction === "reparent") && "ring-1 ring-lt-primary",
         )}
         data-drop-instruction={dropInstruction ?? undefined}
         ref={rowRef}
@@ -504,10 +498,7 @@ function TreeItem({
               <Icon className="size-lt-icon-md shrink-0 animate-spin" name="loader-2" />
             ) : (
               <Icon
-                className={cn(
-                  "size-lt-icon-md shrink-0 transition-transform",
-                  isExpanded && "rotate-90",
-                )}
+                className={cn("size-lt-icon-md shrink-0 transition-transform", isExpanded && "rotate-90")}
                 name="chevron-right"
               />
             )}
