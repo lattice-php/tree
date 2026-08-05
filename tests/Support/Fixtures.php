@@ -16,3 +16,22 @@ function seedCategoryTree(): Category
 
     return $electronics;
 }
+
+/**
+ * The base tree plus a second expandable root, so a browser case can expand
+ * one branch while another stays collapsed. Kept separate from
+ * {@see seedCategoryTree()} because the feature suite pins the exact root list.
+ */
+function seedLazyCategories(): Category
+{
+    $electronics = seedCategoryTree();
+    $clothing = Category::factory()->create(['name' => 'Clothing']);
+    Category::factory()->childOf($clothing)->create(['name' => 'Men']);
+
+    return $electronics;
+}
+
+function categoryId(string $name): string
+{
+    return (string) Category::query()->where('name', $name)->value('id');
+}
