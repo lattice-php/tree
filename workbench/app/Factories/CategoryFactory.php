@@ -17,6 +17,8 @@ class CategoryFactory extends Factory
         return [
             'name' => fake()->unique()->words(2, true),
             'parent_id' => null,
+            'sort_order' => 0,
+            'is_active' => true,
         ];
     }
 

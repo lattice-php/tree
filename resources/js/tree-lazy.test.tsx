@@ -99,6 +99,57 @@ describe("lazy tree", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("invalidates loaded children when the revision changes", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ nodes: [treeNode("laptops", "Laptops")] }))
+      .mockResolvedValueOnce(jsonResponse({ nodes: [treeNode("phones", "Phones")] }));
+    const view = renderLazyTree({ defaultExpanded: ["electronics"], nodes: roots, revision: 1 });
+
+    expect(await screen.findByText("Laptops")).toBeInTheDocument();
+
+    view.rerender(
+      <TreeComponent
+        node={fakeNode({
+          id: "lazy-tree",
+          props: {
+            activeId: null,
+            defaultExpanded: ["electronics"],
+            endpoint: "/lattice/trees/categories",
+            lazy: true,
+            nodes: roots,
+            ref: "sealed-ref",
+            rememberState: false,
+            revision: 2,
+          },
+          type: "tree",
+        })}
+      >
+        {null}
+      </TreeComponent>,
+    );
+
+    expect(await screen.findByText("Phones")).toBeInTheDocument();
+    expect(screen.queryByText("Laptops")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("reveals and focuses an active node through its lazy ancestor path", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ nodes: [treeNode("laptops", "Laptops", { hasChildren: true })] }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ nodes: [treeNode("target", "Target")] }));
+
+    renderLazyTree({ activeId: "target", activePath: ["electronics", "laptops"], nodes: roots });
+
+    expect(await screen.findByText("Target")).toBeInTheDocument();
+    expect(screen.getByTestId("tree-node-electronics")).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("tree-node-laptops")).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("tree-node-target")).toHaveFocus();
+    expect(screen.getByTestId("tree-node-target")).toHaveAttribute("aria-selected", "true");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("collapses on a failed fetch and retries on the next expand", async () => {
     fetchMock
       .mockRejectedValueOnce(new Error("network down"))

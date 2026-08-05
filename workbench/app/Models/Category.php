@@ -12,6 +12,8 @@ use Workbench\App\Factories\CategoryFactory;
 
 /**
  * @property string $name
+ * @property int $sort_order
+ * @property bool $is_active
  * @property-read Category|null $parent
  * @property-read Collection<int, Category> $children
  */
@@ -21,7 +23,7 @@ class Category extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'parent_id'];
+    protected $fillable = ['name', 'parent_id', 'sort_order', 'is_active'];
 
     /** @return BelongsTo<Category, $this> */
     public function parent(): BelongsTo

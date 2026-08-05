@@ -14,6 +14,8 @@ use Lattice\Lattice\Ui\Components\Text;
 use Lattice\Lattice\Ui\Enums\Gap;
 use Lattice\Tree\Tree;
 use Lattice\Tree\TreeNode;
+use Workbench\App\Actions\MoveTreeNodeAction;
+use Workbench\App\Actions\SelectTreeNodeAction;
 use Workbench\App\Actions\ShowTreeNodeInfoAction;
 
 #[AsPage(route: '/tree')]
@@ -68,7 +70,9 @@ final class TreePage extends WorkbenchPage
                         ])
                         ->activeId('electronics-phones')
                         ->defaultExpanded(['electronics', 'furniture'])
-                        ->rememberState(),
+                        ->moveAction(MoveTreeNodeAction::class)
+                        ->rememberState()
+                        ->selectAction(SelectTreeNodeAction::class),
                     Modal::make('tree-node-info')
                         ->title('Node info')
                         ->description('Details about the selected node.')

@@ -10,10 +10,12 @@ final readonly class CallbackTreeSource implements TreeSource
     /**
      * @param  Closure(): iterable<int, TreeNode>  $roots
      * @param  (Closure(string): iterable<int, TreeNode>)|null  $children
+     * @param  (Closure(string): list<string>|null)|null  $path
      */
     public function __construct(
         private Closure $roots,
         private ?Closure $children = null,
+        private ?Closure $path = null,
     ) {}
 
     public function roots(): iterable
@@ -24,5 +26,10 @@ final readonly class CallbackTreeSource implements TreeSource
     public function children(string $parentId): iterable
     {
         return $this->children instanceof Closure ? ($this->children)($parentId) : [];
+    }
+
+    public function path(string $nodeId): ?array
+    {
+        return $this->path instanceof Closure ? ($this->path)($nodeId) : null;
     }
 }

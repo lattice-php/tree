@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace Lattice\Tree;
 
 use InvalidArgumentException;
+use Lattice\Lattice\Actions\ActionDefinition;
+use Lattice\Lattice\Actions\Components\Action;
 use Lattice\Lattice\Attributes\AsComponent;
 use Lattice\Lattice\Attributes\SerializationHook;
 use Lattice\Lattice\Core\Contracts\InteractiveComponent;
@@ -25,18 +27,17 @@ class Tree extends Component implements InteractiveComponent
 
     public bool $rememberState = false;
 
+    public string|int|null $revision = null;
+
+    public ?Action $selectAction = null;
+
+    public ?Action $moveAction = null;
+
     public ?string $endpoint = null;
 
     public bool $lazy = false;
 
-    private int $eagerDepth = self::MAX_DEPTH;
-
-    /**
-     * Serialization depth cap: the termination guarantee for source-backed
-     * trees whose adjacency data contains a cycle. Not a feature knob — lazy
-     * loading is the planned path for genuinely deep hierarchies.
-     */
-    private const int MAX_DEPTH = 50;
+    private ?int $eagerDepth = null;
 
     public static function make(?string $key = null): static
     {
@@ -80,7 +81,7 @@ class Tree extends Component implements InteractiveComponent
         }
 
         $this->lazy = true;
-        $this->eagerDepth = min($eagerDepth, self::MAX_DEPTH);
+        $this->eagerDepth = $eagerDepth;
 
         return $this;
     }
@@ -127,6 +128,49 @@ class Tree extends Component implements InteractiveComponent
         return $this;
     }
 
+    public function revision(string|int|null $revision): static
+    {
+        $this->revision = $revision;
+
+        return $this;
+    }
+
+    /**
+     * @param  class-string<ActionDefinition>  $action
+     * @param  array<string, mixed>  $context
+     */
+    public function selectAction(string $action, array $context = []): static
+    {
+        $this->selectAction = Action::use($action, $context);
+
+        return $this;
+    }
+
+    /**
+     * @param  class-string<ActionDefinition>  $action
+     * @param  array<string, mixed>  $context
+     */
+    public function moveAction(string $action, array $context = []): static
+    {
+        $this->moveAction = Action::use($action, $context);
+
+        return $this;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    #[SerializationHook(priority: 300)]
+    protected function serialiseActivePath(array $data): array
+    {
+        if ($this->activeId !== null && $this->source instanceof TreeSource) {
+            $data['props']['activePath'] = $this->source->path($this->activeId);
+        }
+
+        return $data;
+    }
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -134,11 +178,9 @@ class Tree extends Component implements InteractiveComponent
     #[SerializationHook(priority: 300)]
     protected function serialiseNodes(array $data): array
     {
-        // Eager trees serialize one level beyond MAX_DEPTH as a shallow
-        // boundary row; lazy trees serialize exactly $eagerDepth levels.
-        $maxLevels = $this->lazy ? $this->eagerDepth : self::MAX_DEPTH + 1;
+        $maxLevels = $this->lazy ? $this->eagerDepth : null;
 
-        $roots = $maxLevels > 0 && $this->source instanceof TreeSource
+        $roots = ($maxLevels === null || $maxLevels > 0) && $this->source instanceof TreeSource
             ? $this->nodeList($this->source->roots())
             : [];
 
@@ -153,11 +195,15 @@ class Tree extends Component implements InteractiveComponent
     /**
      * @return array<string, mixed>
      */
-    private function serialiseNode(TreeNode $node, int $level, int $maxLevels): array
+    /**
+     * @param  array<string, true>  $ancestors
+     * @return array<string, mixed>
+     */
+    private function serialiseNode(TreeNode $node, int $level, ?int $maxLevels, array $ancestors = []): array
     {
         $data = $node->serialiseShallow();
 
-        if ($level >= $maxLevels) {
+        if ($maxLevels !== null && $level >= $maxLevels) {
             if ($node->children !== []) {
                 $data['hasChildren'] = true;
             }
@@ -165,10 +211,20 @@ class Tree extends Component implements InteractiveComponent
             return $data;
         }
 
+        $ancestors[$node->id] = true;
         $children = $this->resolveChildren($node);
+        $children = array_values(array_filter(
+            $children,
+            static fn (TreeNode $child): bool => ! isset($ancestors[$child->id]),
+        ));
 
         if ($children !== []) {
-            $data['children'] = array_map(fn (TreeNode $child): array => $this->serialiseNode($child, $level + 1, $maxLevels), $children);
+            $data['children'] = array_map(
+                fn (TreeNode $child): array => $this->serialiseNode($child, $level + 1, $maxLevels, $ancestors),
+                $children,
+            );
+        } elseif ($node->hasChildren || $node->children !== []) {
+            $data['hasChildren'] = true;
         }
 
         return $data;
