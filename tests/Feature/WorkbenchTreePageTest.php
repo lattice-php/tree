@@ -6,16 +6,6 @@ use Inertia\Testing\AssertableInertia as Assert;
 use function Pest\Laravel\get;
 use function Pest\Laravel\withoutVite;
 
-it('builds the workbench before serving it', function (): void {
-    $composer = json_decode(
-        file_get_contents(__DIR__.'/../../composer.json'),
-        associative: true,
-        flags: JSON_THROW_ON_ERROR,
-    );
-
-    expect($composer['scripts']['serve'])->toContain('@build');
-});
-
 it('serves the workbench tree demo page', function (): void {
     withoutVite();
 

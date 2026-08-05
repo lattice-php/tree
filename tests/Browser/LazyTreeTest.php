@@ -1,25 +1,6 @@
 <?php
 declare(strict_types=1);
 
-use Workbench\App\Models\Category;
-
-function seedLazyCategories(): Category
-{
-    $electronics = Category::factory()->create(['name' => 'Electronics']);
-    $laptops = Category::factory()->childOf($electronics)->create(['name' => 'Laptops']);
-    Category::factory()->childOf($laptops)->create(['name' => 'Ultrabooks']);
-    $clothing = Category::factory()->create(['name' => 'Clothing']);
-    Category::factory()->childOf($clothing)->create(['name' => 'Men']);
-    Category::factory()->create(['name' => 'Books']);
-
-    return $electronics;
-}
-
-function categoryId(string $name): string
-{
-    return (string) Category::query()->where('name', $name)->value('id');
-}
-
 it('fetches and reveals children when an unloaded node expands', function (): void {
     $electronics = seedLazyCategories();
 

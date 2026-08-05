@@ -119,6 +119,9 @@ final class TreeNode implements JsonSerializable
     }
 
     /**
+     * Normalizes a mixed list of nodes and array shorthands; see
+     * {@see TreeNode::fromArray()} for the keys the array form supports.
+     *
      * @param  list<TreeNode|array<string, mixed>>  $nodes
      * @return list<TreeNode>
      */
@@ -131,6 +134,13 @@ final class TreeNode implements JsonSerializable
     }
 
     /**
+     * The array form is a convenience subset of the builder API. Supported keys:
+     * `id` and `label` (required, cast to string), `icon`, `badge`, `href`
+     * (cast to string), `children` (nodes or arrays, expanded recursively),
+     * `hasChildren` and `disabled` (truthy). Unknown keys are ignored. A badge
+     * colour, `->action()`/`->actions()`, and `->schema()` have no array form —
+     * build those nodes with {@see TreeNode::make()}.
+     *
      * @param  array<string, mixed>  $node
      */
     private static function fromArray(array $node): self

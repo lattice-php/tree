@@ -1,7 +1,8 @@
 import { render, type RenderOptions, type RenderResult } from "@testing-library/react";
-import type { ReactElement, ReactNode } from "react";
-import { vi } from "vitest";
+import type { ReactElement } from "react";
 import {
+  createRegistry,
+  eagerComponent,
   RegistryContext,
   type ComponentPropsOf,
   type Node,
@@ -9,21 +10,7 @@ import {
   type RendererComponent,
   type Schema,
 } from "@lattice-php/lattice/core";
-import type { TreeNodeData } from "./tree";
-
-/**
- * The slice of `@inertiajs/react` the tree renderer touches — `router.visit`
- * (Enter/Space on a linked node) and `Link` (an href label). Use inside a mock
- * factory: `vi.mock("@inertiajs/react", async () => (await import("./test-support")).inertiaMock())`.
- */
-export function inertiaMock(): Record<string, unknown> {
-  return {
-    Link: ({ children, ...rest }: { children?: ReactNode }) => <a {...rest}>{children}</a>,
-    router: {
-      visit: vi.fn<(url: string, options?: unknown) => void>(),
-    },
-  };
-}
+import TreeComponent, { type TreeNodeData } from "./tree";
 
 /**
  * Renders `ui` with `registry` available to the core `<Renderer>` (used here to
@@ -71,3 +58,57 @@ export const TestText: RendererComponent = ({ node }) => <span>{String(node.prop
 export function treeNode(id: string, label: string, extra: Partial<TreeNodeData> = {}): TreeNodeData {
   return { id, label, schema: [{ props: { text: label }, type: "test.text" }], ...extra } as TreeNodeData;
 }
+
+/** Labels of the `test.action` buttons clicked since the last reset. */
+export const actionClicks: string[] = [];
+
+export const TestAction: RendererComponent = ({ node }) => (
+  <button onClick={() => actionClicks.push(String(node.props?.label ?? ""))} type="button">
+    {String(node.props?.label ?? "")}
+  </button>
+);
+
+export const TestLink: RendererComponent = ({ node }) => (
+  <a href={String(node.props?.href ?? "#")} onClick={(event) => event.preventDefault()}>
+    {String(node.props?.label ?? "")}
+  </a>
+);
+
+/**
+ * The registry every renderer suite renders through: the tree itself plus the
+ * stand-in body components a node's compiled schema can carry.
+ */
+export const testRegistry = createRegistry({
+  components: {
+    "test.action": eagerComponent(TestAction),
+    "test.link": eagerComponent(TestLink),
+    "test.text": eagerComponent(TestText),
+    tree: eagerComponent(TreeComponent),
+  },
+  name: "test/tree",
+});
+
+/**
+ * Renders the tree with `props` merged over the inert defaults, so a case
+ * spells out only the wire props it exercises.
+ */
+export function renderTree(props: Record<string, unknown>, id = "t1"): RenderResult {
+  const node = fakeNode({
+    id,
+    props: { defaultExpanded: [], rememberState: false, ...props },
+    type: "tree",
+  });
+
+  return renderWithRegistry(<TreeComponent node={node}>{null}</TreeComponent>, testRegistry);
+}
+
+/**
+ * A parent with two children (one linked) plus an unloaded boundary — the
+ * shape the render and keyboard suites navigate.
+ */
+export const sampleNodes: TreeNodeData[] = [
+  treeNode("1", "Electronics", {
+    children: [treeNode("2", "Laptops", { href: "/c/2" }), treeNode("3", "Phones")],
+  }),
+  treeNode("9", "Suppliers", { hasChildren: true }),
+];

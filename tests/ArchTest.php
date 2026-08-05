@@ -9,3 +9,13 @@ arch('no debug statements ship in the package')
 arch('the package uses strict types throughout')
     ->expect('Lattice\\Tree')
     ->toUseStrictTypes();
+
+it('builds the workbench before serving it', function (): void {
+    $composer = json_decode(
+        (string) file_get_contents(__DIR__.'/../composer.json'),
+        associative: true,
+        flags: JSON_THROW_ON_ERROR,
+    );
+
+    expect($composer['scripts']['serve'])->toContain('@build');
+});
