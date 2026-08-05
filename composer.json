@@ -30,7 +30,6 @@
     "extra": {
         "extended-testbench": {
             "check-ignore": [
-                "tests/Browser/DummyTest.php",
                 "composer script: lint"
             ]
         },

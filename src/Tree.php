@@ -193,9 +193,6 @@ class Tree extends Component implements InteractiveComponent
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    /**
      * @param  array<string, true>  $ancestors
      * @return array<string, mixed>
      */
