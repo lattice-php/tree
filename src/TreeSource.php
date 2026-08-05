@@ -10,11 +10,11 @@ namespace Lattice\Tree;
  */
 interface TreeSource
 {
-    /** @return iterable<int, TreeNode> */
-    public function roots(): iterable;
+    /** @return list<TreeNode> */
+    public function roots(): array;
 
-    /** @return iterable<int, TreeNode> */
-    public function children(string $parentId): iterable;
+    /** @return list<TreeNode> */
+    public function children(string $parentId): array;
 
     /** @return list<string>|null */
     public function path(string $nodeId): ?array;

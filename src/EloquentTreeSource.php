@@ -5,6 +5,7 @@ namespace Lattice\Tree;
 
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 
@@ -22,13 +23,14 @@ final class EloquentTreeSource implements TreeSource
 {
     private const string ROOTS = '';
 
-    /** @var Closure(Builder<Model>): mixed|null */
+    /** @var (Closure(Builder<TModel>): mixed)|null */
     private ?Closure $scope = null;
 
     private bool $lazy = false;
 
     private ?string $orderKey = null;
 
+    /** @var 'asc'|'desc' */
     private string $orderDirection = 'asc';
 
     /** @var Closure(TModel, TreeNode): TreeNode|null */
@@ -65,7 +67,7 @@ final class EloquentTreeSource implements TreeSource
     /**
      * Constrain every query this source issues (e.g. only active rows).
      *
-     * @param  Closure(Builder<Model>): mixed  $scope
+     * @param  Closure(Builder<TModel>): mixed  $scope
      */
     public function scope(Closure $scope): static
     {
@@ -128,14 +130,14 @@ final class EloquentTreeSource implements TreeSource
         return $this;
     }
 
-    public function roots(): iterable
+    public function roots(): array
     {
         return $this->lazy
             ? $this->level(null)
             : $this->childrenByParent()[self::ROOTS] ?? [];
     }
 
-    public function children(string $parentId): iterable
+    public function children(string $parentId): array
     {
         return $this->lazy
             ? $this->level($parentId)
@@ -202,10 +204,9 @@ final class EloquentTreeSource implements TreeSource
             ->whereColumn("{$alias}.{$this->parentKey}", $model->getQualifiedKeyName())
             ->limit(1);
 
-        $rows = $this->ordered($query
+        $rows = $this->fetch($this->ordered($query
             ->select("{$table}.*")
-            ->addSelect(['lattice_tree_has_children' => $probe]))
-            ->get();
+            ->addSelect(['lattice_tree_has_children' => $probe])));
 
         return array_values($rows->map(
             fn ($row): TreeNode => $this->node(
@@ -242,10 +243,21 @@ final class EloquentTreeSource implements TreeSource
     }
 
     /**
+     * @param  Builder<TModel>  $query
+     * @return Collection<int, TModel>
+     */
+    private function fetch(Builder $query): Collection
+    {
+        /** @var Collection<int, TModel> larastan drops the template when resolving get() */
+        return $query->get();
+    }
+
+    /**
      * @return Builder<TModel>
      */
     private function query(): Builder
     {
+        /** @var Builder<TModel> $builder larastan drops the template when resolving newQuery() */
         $builder = (new $this->model)->newQuery();
 
         if ($this->scope instanceof Closure) {
@@ -271,7 +283,7 @@ final class EloquentTreeSource implements TreeSource
         /** @var array<string, list<TModel>> $modelsByParent */
         $modelsByParent = [];
 
-        foreach ($this->ordered($this->query())->get() as $model) {
+        foreach ($this->fetch($this->ordered($this->query())) as $model) {
             $parent = $model->getAttribute($this->parentKey);
             $modelsByParent[$parent === null ? self::ROOTS : (string) $parent][] = $model;
         }
