@@ -1,13 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createRegistry, eagerComponent } from "@lattice-php/lattice/core";
-import { fakeNode, renderWithRegistry, TestText, treeNode } from "./test-support";
+import { fakeNode, renderWithRegistry, testRegistry, treeNode } from "./test-support";
 import TreeComponent, { type TreeNodeData } from "./tree";
-
-const registry = createRegistry({
-  components: { "test.text": eagerComponent(TestText), tree: eagerComponent(TreeComponent) },
-  name: "test/tree-lazy",
-});
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -42,7 +36,7 @@ function renderLazyTree(props: Record<string, unknown>, id = "lazy-tree") {
     type: "tree",
   });
 
-  return renderWithRegistry(<TreeComponent node={node}>{null}</TreeComponent>, registry);
+  return renderWithRegistry(<TreeComponent node={node}>{null}</TreeComponent>, testRegistry);
 }
 
 const roots: TreeNodeData[] = [

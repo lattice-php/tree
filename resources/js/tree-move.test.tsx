@@ -1,14 +1,8 @@
 import { act, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createRegistry, eagerComponent } from "@lattice-php/lattice/core";
 import { announce, draggable, dropTargetForElements } from "@lattice-php/lattice/dnd";
-import { fakeNode, renderWithRegistry, TestText, treeNode } from "./test-support";
+import { fakeNode, renderWithRegistry, testRegistry, treeNode } from "./test-support";
 import TreeComponent, { type TreeNodeData } from "./tree";
-
-const registry = createRegistry({
-  components: { "test.text": eagerComponent(TestText), tree: eagerComponent(TreeComponent) },
-  name: "test/tree-move",
-});
 
 const moveAction = fakeNode({
   props: { endpoint: "/lattice/actions/move", method: "post", ref: "move-ref" },
@@ -22,7 +16,7 @@ function renderTree(nodes: TreeNodeData[], extra: Record<string, unknown> = {}) 
     type: "tree",
   });
 
-  return renderWithRegistry(<TreeComponent node={node}>{null}</TreeComponent>, registry);
+  return renderWithRegistry(<TreeComponent node={node}>{null}</TreeComponent>, testRegistry);
 }
 
 function dropTarget(id: string) {

@@ -1,49 +1,11 @@
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createRegistry, eagerComponent } from "@lattice-php/lattice/core";
-import type { RendererComponent } from "@lattice-php/lattice/core";
-import { fakeNode, renderWithRegistry, TestText, treeNode } from "./test-support";
+import { fakeNode, renderTree, sampleNodes as nodes, treeNode } from "./test-support";
 import TreeComponent, { type TreeNodeData } from "./tree";
-
-const TestAction: RendererComponent = ({ node }) => (
-  <button type="button">{String(node.props?.label ?? "")}</button>
-);
-const TestLink: RendererComponent = ({ node }) => (
-  <a href={String(node.props?.href ?? "#")} onClick={(event) => event.preventDefault()}>
-    {String(node.props?.label ?? "")}
-  </a>
-);
-
-const registry = createRegistry({
-  components: {
-    "test.action": eagerComponent(TestAction),
-    "test.link": eagerComponent(TestLink),
-    "test.text": eagerComponent(TestText),
-    tree: eagerComponent(TreeComponent),
-  },
-  name: "test/tree",
-});
-
-function renderTree(props: Record<string, unknown>, id = "t1") {
-  const node = fakeNode({
-    id,
-    props: { defaultExpanded: [], rememberState: false, ...props },
-    type: "tree",
-  });
-
-  return renderWithRegistry(<TreeComponent node={node}>{null}</TreeComponent>, registry);
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-const nodes: TreeNodeData[] = [
-  treeNode("1", "Electronics", {
-    children: [treeNode("2", "Laptops", { href: "/c/2" }), treeNode("3", "Phones")],
-  }),
-  treeNode("9", "Suppliers", { hasChildren: true }),
-];
 
 describe("Tree component", () => {
   it("renders roots and toggles a subtree via the chevron", () => {
@@ -57,13 +19,14 @@ describe("Tree component", () => {
     expect(screen.getByText("Laptops")).toBeVisible();
   });
 
-  it("shows a chevron for a loadable boundary and none for a leaf or a dead boundary", () => {
+  it("shows a chevron for a loadable boundary but not for a leaf", () => {
     renderTree({ defaultExpanded: ["1"], endpoint: "/lattice/trees/demo", nodes, ref: "sealed" });
 
     expect(screen.getByTestId("tree-node-9-toggle")).toBeInTheDocument();
     expect(screen.queryByTestId("tree-node-3-toggle")).not.toBeInTheDocument();
+  });
 
-    cleanup();
+  it("hides the chevron for a dead boundary with no endpoint to load from", () => {
     renderTree({ defaultExpanded: ["1"], nodes });
 
     expect(screen.queryByTestId("tree-node-9-toggle")).not.toBeInTheDocument();

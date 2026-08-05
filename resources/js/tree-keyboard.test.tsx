@@ -1,28 +1,10 @@
 import { act, fireEvent, screen } from "@testing-library/react";
 import { router } from "@inertiajs/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createRegistry, eagerComponent } from "@lattice-php/lattice/core";
-import type { RendererComponent } from "@lattice-php/lattice/core";
-import { fakeNode, renderWithRegistry, TestText, treeNode } from "./test-support";
-import TreeComponent, { type TreeNodeData } from "./tree";
+import { actionClicks, renderTree, sampleNodes as nodes, treeNode } from "./test-support";
+import { type TreeNodeData } from "./tree";
 
-vi.mock("@inertiajs/react", async () => (await import("./test-support")).inertiaMock());
-
-const actionClicks: string[] = [];
-const TestAction: RendererComponent = ({ node }) => (
-  <button onClick={() => actionClicks.push(String(node.props?.label ?? ""))} type="button">
-    {String(node.props?.label ?? "")}
-  </button>
-);
-
-const registry = createRegistry({
-  components: {
-    "test.action": eagerComponent(TestAction),
-    "test.text": eagerComponent(TestText),
-    tree: eagerComponent(TreeComponent),
-  },
-  name: "test/tree-keyboard",
-});
+vi.mock("@inertiajs/react", async () => (await import("./inertia-mock")).inertiaMock());
 
 beforeEach(() => {
   vi.mocked(router.visit).mockClear();
@@ -33,23 +15,6 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
-
-function renderTree(props: Record<string, unknown>, id = "t1") {
-  const node = fakeNode({
-    id,
-    props: { defaultExpanded: [], rememberState: false, ...props },
-    type: "tree",
-  });
-
-  return renderWithRegistry(<TreeComponent node={node}>{null}</TreeComponent>, registry);
-}
-
-const nodes: TreeNodeData[] = [
-  treeNode("1", "Electronics", {
-    children: [treeNode("2", "Laptops", { href: "/c/2" }), treeNode("3", "Phones")],
-  }),
-  treeNode("9", "Suppliers", { hasChildren: true }),
-];
 
 function item(id: string): HTMLElement {
   return screen.getByTestId(`tree-node-${id}`);
