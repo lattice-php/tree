@@ -9,7 +9,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { RefObject } from "react";
-import { runAction } from "@lattice-php/action";
+import { runAction } from "@lattice-php/lattice/action";
 import { apiFetch, apiJson } from "@lattice-php/core";
 import { usePersistentState } from "@lattice-php/ui/lib/use-persistent-state";
 import type { Node } from "@lattice-php/core";
