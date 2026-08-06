@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Lattice\Tree;
 
-use Lattice\Lattice\Core\Definition;
+use Lattice\Core\Definition;
 
 /**
  * A registered, addressable tree: the server-side counterpart of

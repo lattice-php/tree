@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Lattice\Tree;
 
 use Illuminate\Http\Request;
-use Lattice\Lattice\Core\DefinitionRegistry;
+use Lattice\Core\DefinitionRegistry;
 
 /**
  * @extends DefinitionRegistry<TreeDefinition>

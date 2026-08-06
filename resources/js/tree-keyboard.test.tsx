@@ -184,11 +184,17 @@ describe("Tree keyboard navigation", () => {
   it("gives the chevron toggle an accessible name that reflects its state", () => {
     renderTree({ defaultExpanded: [], nodes });
 
-    expect(screen.getByTestId("tree-node-1-toggle")).toHaveAttribute("aria-label", "Expand Electronics");
+    expect(screen.getByTestId("tree-node-1-toggle")).toHaveAttribute(
+      "aria-label",
+      "Expand Electronics",
+    );
 
     fireEvent.click(screen.getByTestId("tree-node-1-toggle"));
 
-    expect(screen.getByTestId("tree-node-1-toggle")).toHaveAttribute("aria-label", "Collapse Electronics");
+    expect(screen.getByTestId("tree-node-1-toggle")).toHaveAttribute(
+      "aria-label",
+      "Collapse Electronics",
+    );
   });
 
   it("activates the focused node on Enter by following its href", () => {
@@ -313,11 +319,9 @@ describe("Tree keyboard navigation", () => {
     fireEvent.keyDown(item("a"), { ctrlKey: true, key: "ArrowDown", shiftKey: true });
 
     await vi.waitFor(() => {
-      expect(screen.getAllByRole("treeitem").map((element) => element.getAttribute("aria-label"))).toEqual([
-        "Beta",
-        "Alpha",
-        "Gamma",
-      ]);
+      expect(
+        screen.getAllByRole("treeitem").map((element) => element.getAttribute("aria-label")),
+      ).toEqual(["Beta", "Alpha", "Gamma"]);
     });
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -384,10 +388,9 @@ describe("Tree keyboard navigation", () => {
     fireEvent.keyDown(item("a"), { ctrlKey: true, key: "ArrowDown", shiftKey: true });
 
     await vi.waitFor(() => {
-      expect(screen.getAllByRole("treeitem").map((element) => element.getAttribute("aria-label"))).toEqual([
-        "Alpha",
-        "Beta",
-      ]);
+      expect(
+        screen.getAllByRole("treeitem").map((element) => element.getAttribute("aria-label")),
+      ).toEqual(["Alpha", "Beta"]);
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

@@ -4,6 +4,18 @@ import { announce, draggable, dropTargetForElements } from "@lattice-php/lattice
 import { fakeNode, renderWithRegistry, testRegistry, treeNode } from "./test-support";
 import TreeComponent, { type TreeNodeData } from "./tree";
 
+vi.mock("@lattice-php/lattice/dnd", () => ({
+  announce: vi.fn(),
+  attachTreeItemInstruction: (data: Record<string, unknown>) => data,
+  combine:
+    (...cleanups: Array<() => void>) =>
+    () =>
+      cleanups.forEach((cleanup) => cleanup()),
+  draggable: vi.fn(() => () => {}),
+  dropTargetForElements: vi.fn(() => () => {}),
+  extractTreeItemInstruction: (data: Record<string, unknown>) => data.instruction ?? null,
+}));
+
 const moveAction = fakeNode({
   props: { endpoint: "/lattice/actions/move", method: "post", ref: "move-ref" },
   type: "action",
@@ -22,7 +34,9 @@ function renderTree(nodes: TreeNodeData[], extra: Record<string, unknown> = {}) 
 function dropTarget(id: string) {
   const call = vi
     .mocked(dropTargetForElements)
-    .mock.calls.find(([options]) => options.element.parentElement?.getAttribute("data-test") === `tree-node-${id}`);
+    .mock.calls.find(
+      ([options]) => options.element.parentElement?.getAttribute("data-test") === `tree-node-${id}`,
+    );
 
   if (!call) {
     throw new Error(`Missing drop target for ${id}`);
@@ -68,7 +82,9 @@ describe("tree drag and drop", () => {
     drop("a", "b", { currentLevel: 0, indentPerLevel: 24, type: "reorder-below" });
 
     await vi.waitFor(() => {
-      expect(screen.getAllByRole("treeitem").map((item) => item.getAttribute("aria-label"))).toEqual(["Beta", "Alpha"]);
+      expect(
+        screen.getAllByRole("treeitem").map((item) => item.getAttribute("aria-label")),
+      ).toEqual(["Beta", "Alpha"]);
     });
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -107,7 +123,9 @@ describe("tree drag and drop", () => {
 
     drop("a", "b", { currentLevel: 0, indentPerLevel: 24, type: "make-child" });
 
-    await vi.waitFor(() => expect(screen.getByTestId("tree-node-a")).toHaveAttribute("aria-level", "2"));
+    await vi.waitFor(() =>
+      expect(screen.getByTestId("tree-node-a")).toHaveAttribute("aria-level", "2"),
+    );
     expect(screen.getByTestId("tree-node-b")).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -126,7 +144,8 @@ describe("tree drag and drop", () => {
       vi
         .mocked(dropTargetForElements)
         .mock.calls.some(
-          ([options]) => options.element.parentElement?.getAttribute("data-test") === "tree-node-disabled",
+          ([options]) =>
+            options.element.parentElement?.getAttribute("data-test") === "tree-node-disabled",
         ),
     ).toBe(false);
   });

@@ -5,11 +5,12 @@ namespace Lattice\Tree;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Lattice\Lattice\Core\Discovery\DiscoveryKinds;
-use Lattice\Lattice\Facades\Lattice;
+use Lattice\Core\Discovery\DiscoveryKinds;
+use Lattice\Core\Facades\Lattice;
 
 final class TreeServiceProvider extends ServiceProvider
 {
+    #[\Override]
     public function register(): void
     {
         DiscoveryKinds::register('trees', AsTree::class);

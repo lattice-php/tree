@@ -4,13 +4,13 @@ declare(strict_types=1);
 namespace Lattice\Tree;
 
 use InvalidArgumentException;
-use Lattice\Lattice\Actions\ActionDefinition;
-use Lattice\Lattice\Actions\Components\Action;
-use Lattice\Lattice\Attributes\AsComponent;
-use Lattice\Lattice\Attributes\SerializationHook;
-use Lattice\Lattice\Core\Contracts\InteractiveComponent;
-use Lattice\Lattice\Ui\Components\Component;
-use Lattice\Lattice\Ui\Components\IsInteractive;
+use Lattice\Actions\ActionDefinition;
+use Lattice\Actions\Components\Action;
+use Lattice\Core\Attributes\AsComponent;
+use Lattice\Core\Attributes\SerializationHook;
+use Lattice\Core\Contracts\InteractiveComponent;
+use Lattice\Ui\Components\Component;
+use Lattice\Ui\Components\IsInteractive;
 use LogicException;
 
 #[AsComponent('tree')]

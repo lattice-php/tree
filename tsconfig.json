@@ -10,5 +10,6 @@
     "verbatimModuleSyntax": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
-  "include": ["resources/js"]
+  "include": ["resources/js"],
+  "exclude": ["resources/js/**/*.test.*", "resources/js/**/*.test-d.*"]
 }
