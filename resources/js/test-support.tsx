@@ -9,16 +9,22 @@ import {
   type Registry,
   type RendererComponent,
   type Schema,
-} from "@lattice-php/lattice/core";
+} from "@lattice-php/core";
 import TreeComponent, { type TreeNodeData } from "./tree";
 
 /**
  * Renders `ui` with `registry` available to the core `<Renderer>` (used here to
  * render a node's schema body), mirroring what the app Provider does.
  */
-export function renderWithRegistry(ui: ReactElement, registry: Registry, options?: RenderOptions): RenderResult {
+export function renderWithRegistry(
+  ui: ReactElement,
+  registry: Registry,
+  options?: RenderOptions,
+): RenderResult {
   return render(ui, {
-    wrapper: ({ children }) => <RegistryContext.Provider value={registry}>{children}</RegistryContext.Provider>,
+    wrapper: ({ children }) => (
+      <RegistryContext.Provider value={registry}>{children}</RegistryContext.Provider>
+    ),
     ...options,
   });
 }
@@ -43,14 +49,25 @@ export function fakeNode<TType extends string>(node: {
  * `"test.action"`, mirroring the compiled `text` envelope a real node's
  * schema carries.
  */
-export const TestText: RendererComponent = ({ node }) => <span>{String(node.props?.text ?? "")}</span>;
+export const TestText: RendererComponent = ({ node }) => (
+  <span>{String(node.props?.text ?? "")}</span>
+);
 
 /**
  * Builds a schema-shaped `TreeNodeData` fixture so tests can stay terse
  * without hand-writing the wrapping `test.text` envelope every time.
  */
-export function treeNode(id: string, label: string, extra: Partial<TreeNodeData> = {}): TreeNodeData {
-  return { id, label, schema: [{ props: { text: label }, type: "test.text" }], ...extra } as TreeNodeData;
+export function treeNode(
+  id: string,
+  label: string,
+  extra: Partial<TreeNodeData> = {},
+): TreeNodeData {
+  return {
+    id,
+    label,
+    schema: [{ props: { text: label }, type: "test.text" }],
+    ...extra,
+  } as TreeNodeData;
 }
 
 /** Labels of the `test.action` buttons clicked since the last reset. */

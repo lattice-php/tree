@@ -39,19 +39,10 @@ final class EloquentTreeSource implements TreeSource
     /** @var array<string, list<TreeNode>>|null */
     private ?array $childrenByParent = null;
 
-    /** @var class-string<TModel> */
-    private readonly string $model;
-
     /**
      * @param  class-string<TModel>  $model
      */
-    private function __construct(
-        string $model,
-        private string $labelKey = 'name',
-        private string $parentKey = 'parent_id',
-    ) {
-        $this->model = $model;
-    }
+    private function __construct(private readonly string $model, private string $labelKey = 'name', private string $parentKey = 'parent_id') {}
 
     /**
      * @template T of Model
@@ -209,7 +200,7 @@ final class EloquentTreeSource implements TreeSource
             ->addSelect(['lattice_tree_has_children' => $probe])));
 
         return array_values($rows->map(
-            fn ($row): TreeNode => $this->node(
+            fn (Model $row): TreeNode => $this->node(
                 $row,
                 (bool) $row->getAttribute('lattice_tree_has_children'),
             ),
@@ -292,7 +283,7 @@ final class EloquentTreeSource implements TreeSource
 
         foreach ($modelsByParent as $parent => $models) {
             $this->childrenByParent[$parent] = array_map(
-                fn ($model): TreeNode => $this->node(
+                fn (Model $model): TreeNode => $this->node(
                     $model,
                     isset($modelsByParent[(string) $model->getKey()]),
                 ),

@@ -9,10 +9,11 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { RefObject } from "react";
-import { runAction } from "@lattice-php/lattice/action";
-import { apiFetch, apiJson, usePersistentState } from "@lattice-php/lattice/core";
-import type { Node } from "@lattice-php/lattice/core";
-import { useEffectDispatcher } from "@lattice-php/lattice/effects/use-effect-dispatcher";
+import { runAction } from "@lattice-php/action";
+import { apiFetch, apiJson } from "@lattice-php/core";
+import { usePersistentState } from "@lattice-php/ui/lib/use-persistent-state";
+import type { Node } from "@lattice-php/core";
+import { useEffectDispatcher } from "@lattice-php/ui/effects/use-effect-dispatcher";
 import type { TreeNodeData } from "./tree";
 
 export const ROOTS_KEY = "";
@@ -124,7 +125,8 @@ function moveTreeNode(graph: TreeGraph, request: TreeMoveRequest): TreeGraph | n
     parents: new Map(graph.parents),
   };
   const withoutNode = sourceChildren.filter((id) => id !== request.nodeId);
-  const targetChildren = sourceKey === targetKey ? withoutNode : [...(graph.children.get(targetKey) ?? [])];
+  const targetChildren =
+    sourceKey === targetKey ? withoutNode : [...(graph.children.get(targetKey) ?? [])];
   const position = Math.max(0, Math.min(request.position, targetChildren.length));
 
   if (sourceKey === targetKey && sourceIndex === position) {
@@ -317,11 +319,15 @@ export function useTreeState({
   selectAction: Node<"action"> | null;
   storageKey: string;
 }): TreeContextValue {
-  const [expanded, setExpanded] = usePersistentState<Set<string>>(storageKey, () => new Set(defaultExpanded), {
-    enabled: rememberState,
-    parse: parseExpanded,
-    serialize: (value) => JSON.stringify([...value]),
-  });
+  const [expanded, setExpanded] = usePersistentState<Set<string>>(
+    storageKey,
+    () => new Set(defaultExpanded),
+    {
+      enabled: rememberState,
+      parse: parseExpanded,
+      serialize: (value) => JSON.stringify([...value]),
+    },
+  );
   const [focusedId, setFocusedId] = useState<string | null>(() => nodes[0]?.id ?? null);
   const [loading, setLoading] = useState<Set<string>>(new Set());
   const [store] = useState(() =>
@@ -377,7 +383,10 @@ export function useTreeState({
     [setExpanded],
   );
 
-  const expand = useCallback((id: string) => setExpanded((current) => new Set(current).add(id)), [setExpanded]);
+  const expand = useCallback(
+    (id: string) => setExpanded((current) => new Set(current).add(id)),
+    [setExpanded],
+  );
 
   const activate = useCallback(
     (id: string) => {
@@ -508,9 +517,12 @@ export function useTreeState({
       const generation = generationRef.current;
       setLoading((current) => new Set(current).add(id));
 
-      const request = apiJson<{ nodes: TreeNodeData[] }>(`${endpoint}?parent=${encodeURIComponent(id)}`, {
-        ref: componentRef ?? "",
-      })
+      const request = apiJson<{ nodes: TreeNodeData[] }>(
+        `${endpoint}?parent=${encodeURIComponent(id)}`,
+        {
+          ref: componentRef ?? "",
+        },
+      )
         .then(({ nodes: fetched }) => {
           if (generation !== generationRef.current) {
             return;
@@ -561,7 +573,10 @@ export function useTreeState({
     [store],
   );
 
-  const parentFor = useCallback((id: string) => store.getState().graph.parents.get(id) ?? null, [store]);
+  const parentFor = useCallback(
+    (id: string) => store.getState().graph.parents.get(id) ?? null,
+    [store],
+  );
 
   const positionFor = useCallback(
     (id: string) => {
@@ -581,11 +596,11 @@ export function useTreeState({
 
       return Boolean(
         source &&
-          target &&
-          source.disabled !== true &&
-          target.disabled !== true &&
-          sourceId !== targetId &&
-          !isDescendant(current, sourceId, targetId),
+        target &&
+        source.disabled !== true &&
+        target.disabled !== true &&
+        sourceId !== targetId &&
+        !isDescendant(current, sourceId, targetId),
       );
     },
     [store],

@@ -1,8 +1,9 @@
 import { router } from "@inertiajs/react";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
-import { cn, nodeIdentity, Renderer } from "@lattice-php/lattice/core";
-import type { Node, RendererComponent, Schema } from "@lattice-php/lattice/core";
+import { nodeIdentity, Renderer } from "@lattice-php/core";
+import { cn } from "@lattice-php/ui/lib/utils";
+import type { Node, RendererComponent, Schema } from "@lattice-php/core";
 import {
   announce,
   attachTreeItemInstruction,
@@ -12,8 +13,8 @@ import {
   extractTreeItemInstruction,
 } from "@lattice-php/lattice/dnd";
 import type { TreeItemInstruction } from "@lattice-php/lattice/dnd";
-import { Icon } from "@lattice-php/lattice/icons";
-import { useT } from "@lattice-php/lattice/i18n";
+import { Icon } from "@lattice-php/ui/icons";
+import { useT } from "@lattice-php/ui/i18n";
 import { ROOTS_KEY, TreeContext, useTreeContext, useTreeState } from "./tree-context";
 
 /**
@@ -47,14 +48,21 @@ export type TreeWireProps = {
   selectAction: Node<"action"> | null;
 };
 
-declare module "@lattice-php/lattice" {
+declare module "@lattice-php/core" {
   interface ComponentProps {
     tree: TreeWireProps;
   }
 }
 
-function isExpandable(node: TreeNodeData, children: TreeNodeData[] | undefined, canLoad: boolean): boolean {
-  return Boolean(children?.length) || (node.hasChildren === true && (canLoad || Boolean(node.children?.length)));
+function isExpandable(
+  node: TreeNodeData,
+  children: TreeNodeData[] | undefined,
+  canLoad: boolean,
+): boolean {
+  return (
+    Boolean(children?.length) ||
+    (node.hasChildren === true && (canLoad || Boolean(node.children?.length)))
+  );
 }
 
 const ORDER_PATH_SEGMENT_WIDTH = 6;
@@ -159,7 +167,8 @@ function TreeItem({
   function relativePosition(sourceId: string, targetId: string, after: boolean): number {
     const targetParentId = parentFor(targetId);
     const targetPosition = positionFor(targetId);
-    const sourceAdjustment = parentFor(sourceId) === targetParentId && positionFor(sourceId) < targetPosition ? 1 : 0;
+    const sourceAdjustment =
+      parentFor(sourceId) === targetParentId && positionFor(sourceId) < targetPosition ? 1 : 0;
 
     return targetPosition + (after ? 1 : 0) - sourceAdjustment;
   }
@@ -254,10 +263,15 @@ function TreeItem({
               element: target,
               indentPerLevel: 24,
               input,
-              mode: isExpanded ? "expanded" : siblingIndex === siblingCount ? "last-in-group" : "standard",
+              mode: isExpanded
+                ? "expanded"
+                : siblingIndex === siblingCount
+                  ? "last-in-group"
+                  : "standard",
             },
           ),
-        onDrag: ({ self }) => setDropInstruction(extractTreeItemInstruction(self.data)?.type ?? null),
+        onDrag: ({ self }) =>
+          setDropInstruction(extractTreeItemInstruction(self.data)?.type ?? null),
         onDragEnter: ({ self }) => {
           setDropInstruction(extractTreeItemInstruction(self.data)?.type ?? null);
 
@@ -477,7 +491,8 @@ function TreeItem({
           dragging && "opacity-50",
           dropInstruction === "reorder-above" && "border-t-lt-primary",
           dropInstruction === "reorder-below" && "border-b-lt-primary",
-          (dropInstruction === "make-child" || dropInstruction === "reparent") && "ring-1 ring-lt-primary",
+          (dropInstruction === "make-child" || dropInstruction === "reparent") &&
+            "ring-1 ring-lt-primary",
         )}
         data-drop-instruction={dropInstruction ?? undefined}
         ref={rowRef}
@@ -498,7 +513,10 @@ function TreeItem({
               <Icon className="size-lt-icon-md shrink-0 animate-spin" name="loader-2" />
             ) : (
               <Icon
-                className={cn("size-lt-icon-md shrink-0 transition-transform", isExpanded && "rotate-90")}
+                className={cn(
+                  "size-lt-icon-md shrink-0 transition-transform",
+                  isExpanded && "rotate-90",
+                )}
                 name="chevron-right"
               />
             )}

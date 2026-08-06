@@ -5,8 +5,8 @@ namespace Lattice\Tree;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Lattice\Lattice\Core\Concerns\InteractsWithComponents;
-use Lattice\Lattice\Core\Contracts\SignsComponentReferences;
+use Lattice\Core\Concerns\InteractsWithComponents;
+use Lattice\Core\Contracts\SignsComponentReferences;
 
 final readonly class TreeController
 {

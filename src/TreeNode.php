@@ -4,19 +4,19 @@ declare(strict_types=1);
 namespace Lattice\Tree;
 
 use JsonSerializable;
-use Lattice\Lattice\Actions\Components\Action;
-use Lattice\Lattice\Actions\Components\ActionGroup;
-use Lattice\Lattice\Core\Color;
-use Lattice\Lattice\Core\Enums\ColorName;
-use Lattice\Lattice\Ui\Components\Badge;
-use Lattice\Lattice\Ui\Components\Component;
-use Lattice\Lattice\Ui\Components\Icon;
-use Lattice\Lattice\Ui\Components\Link;
-use Lattice\Lattice\Ui\Components\Stack;
-use Lattice\Lattice\Ui\Components\Text;
-use Lattice\Lattice\Ui\Enums\Side;
-use Lattice\Lattice\Ui\Enums\StackDirection;
-use Lattice\Lattice\Ui\Enums\Width;
+use Lattice\Actions\Components\Action;
+use Lattice\Actions\Components\ActionGroup;
+use Lattice\Core\Color;
+use Lattice\Core\Enums\ColorName;
+use Lattice\Ui\Components\Badge;
+use Lattice\Ui\Components\Component;
+use Lattice\Ui\Components\Icon;
+use Lattice\Ui\Components\Link;
+use Lattice\Ui\Components\Stack;
+use Lattice\Ui\Components\Text;
+use Lattice\Ui\Enums\Side;
+use Lattice\Ui\Enums\StackDirection;
+use Lattice\Ui\Enums\Width;
 
 final class TreeNode implements JsonSerializable
 {
